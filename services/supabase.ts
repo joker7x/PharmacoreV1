@@ -1,57 +1,93 @@
 
 import { SUPABASE_URL, SUPABASE_KEY } from '../constants';
 
-/**
- * جلب الإعدادات العالمية من Supabase
- */
+const headers = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json'
+};
+
 export const getGlobalConfig = async (): Promise<any> => {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config&select=value`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config&select=value`, { headers });
     if (!response.ok) return null;
     const data = await response.json();
     return data[0]?.value || null;
+  } catch (e) { return null; }
+};
+
+export const updateGlobalConfig = async (config: any): Promise<void> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ value: config })
+    });
+    if (response.status === 404 || !response.ok) {
+      await fetch(`${SUPABASE_URL}/rest/v1/app_settings`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ key: 'global_config', value: config })
+      });
+    }
+  } catch (e) {}
+};
+
+/**
+ * مزامنة بيانات مستخدم تليجرام مع قاعدة البيانات
+ */
+export const syncTelegramUser = async (user: any): Promise<void> => {
+  if (!user?.id) return;
+  try {
+    const userData = {
+      id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      username: user.username,
+      language_code: user.language_code,
+      last_seen: new Date().toISOString(),
+    };
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(userData)
+    });
+
+    if (response.status === 404 || !response.ok) {
+      await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...userData, created_at: new Date().toISOString() })
+      });
+    }
   } catch (e) {
-    console.error("Failed to fetch global config", e);
-    return null;
+    console.error("User sync failed", e);
   }
 };
 
 /**
- * تحديث الإعدادات العالمية في Supabase
+ * جلب جميع المستخدمين للوحة الإدارة
  */
-export const updateGlobalConfig = async (config: any): Promise<void> => {
+export const getAllUsers = async (): Promise<any[]> => {
   try {
-    // محاولة التحديث (PATCH) بناءً على المفتاح global_config
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ value: config })
-    });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users?select=*&order=last_seen.desc`, { headers });
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (e) { return []; }
+};
 
-    // إذا لم يجد السطر (404 أو استجابة فارغة)، نقوم بإنشائه لأول مرة (POST)
-    if (response.status === 404 || !response.ok) {
-        await fetch(`${SUPABASE_URL}/rest/v1/app_settings`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ key: 'global_config', value: config })
-        });
-    }
-  } catch (e) {
-    console.error("Failed to sync config with Supabase", e);
-  }
+/**
+ * تسجيل عملية بحث للمستخدم
+ */
+export const incrementUserSearch = async (userId: number): Promise<void> => {
+  // ملاحظة: لزيادة الرقم نحتاج لـ RPC أو جلب القيمة القديمة وزيادتها
+  // للتبسيط هنا، سنقوم فقط بتحديث آخر ظهور
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ last_seen: new Date().toISOString() })
+    });
+  } catch (e) {}
 };

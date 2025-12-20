@@ -12,7 +12,7 @@ import { DrugIntelligenceModal } from './components/DrugIntelligenceModal.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { AdminView } from './components/AdminView.tsx';
 import { NotificationsModal } from './components/NotificationsModal.tsx';
-import { getGlobalConfig, updateGlobalConfig } from './services/supabase.ts';
+import { getGlobalConfig, updateGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
 const App: React.FC = () => {
   const [drugs, setDrugs] = useState<Drug[]>([]);
@@ -31,6 +31,8 @@ const App: React.FC = () => {
   const [passcode, setPasscode] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
   
+  const [tgUser, setTgUser] = useState<any>(null);
+
   const [config, setConfig] = useState({
     aiAnalysis: true,
     marketCheck: true,
@@ -43,16 +45,19 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const syncRemoteConfig = async () => {
-    const remoteConfig = await getGlobalConfig();
-    if (remoteConfig) {
-      setConfig(remoteConfig);
-      localStorage.setItem('dwa_admin_config', JSON.stringify(remoteConfig));
-    }
-    setConfigLoading(false);
-  };
-
   useEffect(() => {
+    // إعداد تليجرام
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        setTgUser(user);
+        syncTelegramUser(user);
+      }
+    }
+
     const savedDarkMode = localStorage.getItem('dwa_dark_mode') === 'true';
     const savedNotifs = localStorage.getItem('dwa_notifications');
     if (savedNotifs) setNotifications(JSON.parse(savedNotifs));
@@ -60,6 +65,14 @@ const App: React.FC = () => {
     setDarkMode(savedDarkMode);
     if (savedDarkMode) document.documentElement.classList.add('dark');
     
+    const syncRemoteConfig = async () => {
+      const remoteConfig = await getGlobalConfig();
+      if (remoteConfig) {
+        setConfig(remoteConfig);
+      }
+      setConfigLoading(false);
+    };
+
     syncRemoteConfig();
   }, []);
 
@@ -75,9 +88,7 @@ const App: React.FC = () => {
     try {
       const results = await fetchDrugBatchFromAPI(currentOffset);
       let filtered = results;
-      if (mode === 'changed') {
-        filtered = results.filter(d => d.price_new !== null && d.price_old !== null && d.price_new !== d.price_old);
-      }
+      if (mode === 'changed') filtered = results.filter(d => d.price_new !== null && d.price_old !== null && d.price_new !== d.price_old);
       if (search) {
         const s = search.toLowerCase();
         filtered = filtered.filter(d => (d.name_en?.toLowerCase().includes(s)) || (d.name_ar?.includes(s)));
@@ -101,7 +112,6 @@ const App: React.FC = () => {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     await updateGlobalConfig(updated);
-    localStorage.setItem('dwa_admin_config', JSON.stringify(updated));
   };
 
   const handleAdminAccess = () => {
@@ -123,46 +133,24 @@ const App: React.FC = () => {
   };
 
   const MaintenanceScreen = () => (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }}
-      className="min-h-screen flex flex-col items-center justify-center p-8 text-center" 
-      dir="rtl"
-    >
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+      <div className="max-w-md w-full">
         <div className="w-24 h-24 bg-amber-500/10 dark:bg-amber-500/20 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-500 mx-auto mb-8 animate-pulse shadow-2xl shadow-amber-500/10">
           <Construction size={48} />
         </div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4">صيانة طارئة</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">
-          {config.maintenanceMessage}
-        </p>
-        
+        <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">{config.maintenanceMessage}</p>
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 flex items-center justify-between mb-8 shadow-sm">
           <div className="text-right">
             <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest block mb-1">العودة المتوقعة خلال</span>
             <span className="text-xl font-black text-amber-600 dark:text-amber-500">{config.maintenanceTime}</span>
           </div>
-          <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-500">
-            <Clock size={24} />
-          </div>
+          <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-500"><Clock size={24} /></div>
         </div>
-        
-        <div className="flex flex-col gap-4 items-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-              Global Maintenance Mode Active
-            </div>
-
-            <button 
-              onClick={() => setShowLogin(true)} 
-              className="mt-4 flex items-center gap-2 text-[11px] font-black text-blue-500 bg-blue-500/5 px-6 py-3 rounded-full border border-blue-500/10 hover:bg-blue-500/10 transition-all"
-            >
-              <LogIn size={14} /> دخول المسؤول
-            </button>
-        </div>
-      </motion.div>
+        <button onClick={() => setShowLogin(true)} className="mt-4 flex items-center gap-2 text-[11px] font-black text-blue-500 bg-blue-500/5 px-6 py-3 rounded-full border border-blue-500/10 hover:bg-blue-500/10 transition-all mx-auto">
+          <LogIn size={14} /> دخول المسؤول
+        </button>
+      </div>
     </motion.div>
   );
 
@@ -174,12 +162,14 @@ const App: React.FC = () => {
     );
   }
 
+  const isMaintenanceActive = config.maintenanceMode && (!isAuthorized || previewMaintenance);
+
   const renderView = () => {
     switch (currentView) {
       case 'admin':
         return <AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={updateConfig} />;
       case 'settings':
-        return <SettingsView darkMode={darkMode} toggleDarkMode={() => {
+        return <SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => {
           const next = !darkMode;
           setDarkMode(next);
           localStorage.setItem('dwa_dark_mode', String(next));
@@ -192,17 +182,9 @@ const App: React.FC = () => {
         return (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-lg mx-auto px-6 pt-10">
             {isAuthorized && config.maintenanceMode && (
-              <motion.div 
-                initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                className="mb-6 p-4 bg-amber-500 text-white rounded-2xl flex items-center justify-between shadow-lg shadow-amber-500/30"
-              >
-                <div className="flex items-center gap-3">
-                  <AlertTriangle size={20} />
-                  <span className="text-xs font-black">وضع المعاينة (التطبيق مغلق للعامة)</span>
-                </div>
-                <button onClick={() => setPreviewMaintenance(true)} className="px-3 py-1.5 bg-white/20 rounded-xl text-[10px] font-black flex items-center gap-1.5">
-                  <Eye size={12} /> معاينة القفل
-                </button>
+              <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 p-4 bg-amber-500 text-white rounded-2xl flex items-center justify-between shadow-lg shadow-amber-500/30">
+                <div className="flex items-center gap-3"><AlertTriangle size={20} /><span className="text-xs font-black">وضع المعاينة (التطبيق مغلق للعامة)</span></div>
+                <button onClick={() => setPreviewMaintenance(true)} className="px-3 py-1.5 bg-white/20 rounded-xl text-[10px] font-black flex items-center gap-1.5"><Eye size={12} /> معاينة القفل</button>
               </motion.div>
             )}
 
@@ -259,37 +241,22 @@ const App: React.FC = () => {
     }
   };
 
-  const isMaintenanceActive = config.maintenanceMode && (!isAuthorized || previewMaintenance);
-
   return (
     <div className={`min-h-screen pb-40 transition-colors duration-700 ${darkMode ? 'bg-slate-950 text-white' : 'bg-[#f8fafc] text-slate-900'}`}>
-      
       <AnimatePresence mode="wait">
-        {isMaintenanceActive ? (
-          <MaintenanceScreen key="maintenance" />
-        ) : (
-          <div key="app-content">
-            {renderView()}
-          </div>
-        )}
+        {isMaintenanceActive ? <MaintenanceScreen key="maintenance" /> : <div key="app-content">{renderView()}</div>}
       </AnimatePresence>
-      
-      {!isMaintenanceActive && (
-        <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />
-      )}
-
-      {/* Modals - Always rendered in front layer */}
+      {!isMaintenanceActive && <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />}
       <AnimatePresence>{showNotifications && <NotificationsModal notifications={notifications} onClose={() => setShowNotifications(false)} onClear={() => { setNotifications([]); localStorage.setItem('dwa_notifications', JSON.stringify([])); }} />}</AnimatePresence>
       <AnimatePresence>{showLogin && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 w-full max-w-sm rounded-[40px] p-8 text-center shadow-2xl">
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white shadow-lg shadow-blue-500/30"><ShieldCheck size={32} /></div>
             <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">منطقة الإدارة</h2>
-            <p className="text-xs text-slate-500 mb-6">يرجى إدخال الرمز السري للمتابعة</p>
-            <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••••" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 text-center text-2xl tracking-[0.5em] text-blue-600 dark:text-blue-400 font-bold mb-6 outline-none focus:border-blue-500" autoFocus onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+            <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••••" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 text-center text-2xl tracking-[0.5em] text-blue-600 dark:text-blue-400 font-bold mb-6 outline-none" autoFocus onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
             <div className="flex gap-3">
-              <button onClick={() => setShowLogin(false)} className="flex-1 py-4 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-zinc-400 font-bold text-sm">إلغاء</button>
-              <button onClick={handleLogin} className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg shadow-blue-500/20">دخول</button>
+              <button onClick={() => setShowLogin(false)} className="flex-1 py-4 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-500 font-bold text-sm">إلغاء</button>
+              <button onClick={handleLogin} className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black text-sm">دخول</button>
             </div>
           </motion.div>
         </div>
