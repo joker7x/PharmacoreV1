@@ -2,29 +2,33 @@
 import { SUPABASE_URL, SUPABASE_KEY } from '../constants';
 
 /**
- * Simple client for Supabase REST API to manage global app settings
+ * جلب الإعدادات العالمية من Supabase
  */
-export const getFeatureFlag = async (key: string): Promise<boolean> => {
+export const getGlobalConfig = async (): Promise<any> => {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.${key}&select=value`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config&select=value`, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`
       }
     });
-    if (!response.ok) return true;
+    
+    if (!response.ok) return null;
     const data = await response.json();
-    // Use the specific key value from the response
-    return data[0]?.value ?? true;
+    return data[0]?.value || null;
   } catch (e) {
-    console.error("Failed to fetch feature flag", e);
-    return true;
+    console.error("Failed to fetch global config", e);
+    return null;
   }
 };
 
-export const updateFeatureFlag = async (key: string, value: boolean): Promise<void> => {
+/**
+ * تحديث الإعدادات العالمية في Supabase
+ */
+export const updateGlobalConfig = async (config: any): Promise<void> => {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.${key}`, {
+    // محاولة التحديث (PATCH) بناءً على المفتاح global_config
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config`, {
       method: 'PATCH',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -32,10 +36,22 @@ export const updateFeatureFlag = async (key: string, value: boolean): Promise<vo
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
-      body: JSON.stringify({ value })
+      body: JSON.stringify({ value: config })
     });
-    if (!response.ok) throw new Error("Update failed");
+
+    // إذا لم يجد السطر (404 أو استجابة فارغة)، نقوم بإنشائه لأول مرة (POST)
+    if (response.status === 404 || !response.ok) {
+        await fetch(`${SUPABASE_URL}/rest/v1/app_settings`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ key: 'global_config', value: config })
+        });
+    }
   } catch (e) {
-    console.error("Failed to update flag", e);
+    console.error("Failed to sync config with Supabase", e);
   }
 };
