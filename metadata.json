@@ -1,0 +1,7 @@
+{
+  "name": "Pharma Core Mini App",
+  "description": "A high-performance drug price tracker with AI market analysis, optimized for static deployment.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
