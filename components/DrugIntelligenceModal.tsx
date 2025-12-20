@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, RefreshCw, AlertTriangle, CheckCircle, Building2, Wallet, Info, Activity, Sparkles } from 'lucide-react';
@@ -80,7 +81,7 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
                           onClick={() => setActiveTab('ai')} 
                           className={`flex-1 py-3.5 rounded-[24px] text-[12px] font-black transition-all flex items-center justify-center gap-2 ${activeTab === 'ai' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-white' : 'text-slate-400'}`}
                         >
-                          <Sparkles size={14} /> ذكاء DWA
+                          <Sparkles size={14} /> ذكاء Core
                         </button>
                       )}
                   </div>
@@ -105,22 +106,6 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
                                         <div className="text-[13px] font-bold text-slate-700 dark:text-slate-300 line-clamp-2">{drug.company || 'غير معروف'}</div>
                                     </div>
                                 </div>
-
-                                <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-white/5">
-                                  <div className="text-[10px] text-slate-400 font-black mb-3 uppercase tracking-widest">بيانات إضافية</div>
-                                  <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[13px] font-bold text-slate-500">كود الصنف</span>
-                                      <span className="text-[13px] font-black text-slate-800 dark:text-white">#{drug.drug_no}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[13px] font-bold text-slate-500">آخر تحديث للسعر</span>
-                                      <span className="text-[13px] font-black text-slate-800 dark:text-white">
-                                        {drug.api_updated_at ? new Date(drug.api_updated_at).toLocaleDateString('ar-EG') : 'غير متوفر'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
                             </motion.div>
                         )}
 
@@ -132,7 +117,7 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
                                           <div className="absolute inset-0 rounded-full border-4 border-emerald-100 dark:border-emerald-900/30" />
                                           <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
                                         </div>
-                                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">تحقق من التوفر الحالي...</p>
+                                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">فحص توفر السوق الموازي...</p>
                                     </div>
                                 ) : tawreedStatus === 'found' ? (
                                     <div className="space-y-4">
@@ -140,17 +125,15 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
                                           <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-emerald-500/20">
                                             <CheckCircle size={32} />
                                           </div>
-                                          <h4 className="text-xl font-black text-emerald-600 dark:text-emerald-400 mb-2">متوفر في المخازن</h4>
-                                          <p className="text-[13px] font-bold text-emerald-500/70 mb-6">تم العثور على عروض توريد نشطة</p>
-                                          
+                                          <h4 className="text-xl font-black text-emerald-600 dark:text-emerald-400 mb-2">رصد توافر خارجي</h4>
                                           <div className="grid grid-cols-2 gap-3">
                                               <div className="bg-white dark:bg-slate-900 p-5 rounded-[28px] border border-emerald-100/30 dark:border-white/5">
-                                                  <div className="text-[10px] text-slate-400 font-black mb-1">أفضل سعر عرض</div>
+                                                  <div className="text-[10px] text-slate-400 font-black mb-1">أفضل سعر متاح</div>
                                                   <div className="text-xl font-black text-emerald-600">{Number(tawreedData?.bestSale || 0).toFixed(2)}</div>
                                               </div>
                                               <div className="bg-white dark:bg-slate-900 p-5 rounded-[28px] border border-emerald-100/30 dark:border-white/5">
-                                                  <div className="text-[10px] text-slate-400 font-black mb-1">الكمية الإجمالية</div>
-                                                  <div className="text-xl font-black text-emerald-600">{tawreedData?.totalQty}</div>
+                                                  <div className="text-[10px] text-slate-400 font-black mb-1">المؤشر الحالي</div>
+                                                  <div className="text-xl font-black text-emerald-600">Active</div>
                                               </div>
                                           </div>
                                       </div>
@@ -158,40 +141,14 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
                                 ) : (
                                     <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[40px] border border-dashed border-slate-200 dark:border-white/5">
                                         <AlertTriangle size={48} className="mx-auto text-slate-300 dark:text-slate-800 mb-4" />
-                                        <p className="font-bold text-slate-400 mb-2">لا يوجد مخزون حالي</p>
-                                        <p className="text-[11px] text-slate-300 dark:text-slate-600 px-10">لم نتمكن من العثور على عروض متاحة لهذا الصنف في الوقت الحالي.</p>
+                                        <p className="font-bold text-slate-400 mb-2">محدودية التوفر</p>
+                                        <p className="text-[11px] text-slate-300 dark:text-slate-600 px-10">لم يتم رصد عروض توريد نشطة لهذا الصنف في قاعدة بياناتنا اللحظية.</p>
                                     </div>
                                 )}
                             </motion.div>
                         )}
-
-                        {activeTab === 'ai' && (
-                            <motion.div key="ai" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
-                                <div className="bg-indigo-600 p-8 rounded-[40px] text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
-                                    <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 blur-3xl -ml-16 -mt-16" />
-                                    <Sparkles size={32} className="mb-6 opacity-50" />
-                                    <h4 className="text-xl font-black mb-2">رؤية المحرك التنبؤي</h4>
-                                    <p className="text-[13px] font-medium leading-relaxed opacity-90">بناءً على اتجاهات السوق، من المتوقع ثبات سعر هذا الصنف خلال الدورة القادمة.</p>
-                                    
-                                    <div className="mt-8 pt-6 border-t border-white/10 flex justify-between">
-                                        <div>
-                                            <div className="text-[10px] font-black uppercase tracking-widest opacity-60">مستوى الخطورة</div>
-                                            <div className="text-lg font-black">Low Risk</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-[10px] font-black uppercase tracking-widest opacity-60">التوصية</div>
-                                            <div className="text-lg font-black">Hold Stock</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 text-[11px] text-slate-400 font-bold leading-relaxed text-center">
-                                    هذا التحليل تم بواسطة محرك Gemini 3 بناءً على البيانات المتوفرة في الكاش المحلي وحالة السوق الحالية.
-                                </div>
-                            </motion.div>
-                        )}
                     </AnimatePresence>
                 </div>
-                <div className="pb-safe h-6" />
             </motion.div>
         </div>
     );

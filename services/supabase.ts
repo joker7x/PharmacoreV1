@@ -34,11 +34,16 @@ export const updateGlobalConfig = async (config: any): Promise<void> => {
 };
 
 /**
- * مزامنة بيانات مستخدم تليجرام مع قاعدة البيانات
+ * مزامنة بيانات مستخدم تليجرام مع قاعدة البيانات واسترجاع حالته
  */
-export const syncTelegramUser = async (user: any): Promise<void> => {
-  if (!user?.id) return;
+export const syncTelegramUser = async (user: any): Promise<any> => {
+  if (!user?.id) return null;
   try {
+    // 1. Check if user already exists and get their block status
+    const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}&select=*`, { headers });
+    const existingUsers = await checkRes.json();
+    const existingUser = existingUsers[0];
+
     const userData = {
       id: user.id,
       first_name: user.first_name,
@@ -48,46 +53,47 @@ export const syncTelegramUser = async (user: any): Promise<void> => {
       last_seen: new Date().toISOString(),
     };
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify(userData)
-    });
-
-    if (response.status === 404 || !response.ok) {
-      await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ ...userData, created_at: new Date().toISOString() })
+    if (existingUser) {
+      // Update existing
+      await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(userData)
       });
+      return existingUser;
+    } else {
+      // Create new
+      const createRes = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ ...userData, created_at: new Date().toISOString(), is_blocked: false })
+      });
+      const created = await createRes.json();
+      return created[0];
     }
   } catch (e) {
     console.error("User sync failed", e);
+    return null;
   }
 };
 
 /**
- * جلب جميع المستخدمين للوحة الإدارة
+ * حظر أو إلغاء حظر مستخدم
  */
+export const toggleUserBlock = async (userId: number, isBlocked: boolean): Promise<void> => {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ is_blocked: isBlocked })
+    });
+  } catch (e) {}
+};
+
 export const getAllUsers = async (): Promise<any[]> => {
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users?select=*&order=last_seen.desc`, { headers });
     if (!response.ok) return [];
     return await response.json();
   } catch (e) { return []; }
-};
-
-/**
- * تسجيل عملية بحث للمستخدم
- */
-export const incrementUserSearch = async (userId: number): Promise<void> => {
-  // ملاحظة: لزيادة الرقم نحتاج لـ RPC أو جلب القيمة القديمة وزيادتها
-  // للتبسيط هنا، سنقوم فقط بتحديث آخر ظهور
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ last_seen: new Date().toISOString() })
-    });
-  } catch (e) {}
 };

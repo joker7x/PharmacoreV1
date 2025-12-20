@@ -1,6 +1,6 @@
 {
-  "name": "Pharma Core Mini App",
-  "description": "A high-performance drug price tracker with AI market analysis, optimized for static deployment.",
+  "name": "Pharma Core",
+  "description": "The professional standard for drug inventory and price tracking.",
   "requestFramePermissions": [
     "geolocation"
   ]
