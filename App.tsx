@@ -14,6 +14,8 @@ import { AdminView } from './components/AdminView.tsx';
 import { NotificationsModal } from './components/NotificationsModal.tsx';
 import { getGlobalConfig, updateGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
+const MASTER_ID = 1541678512;
+
 const PageTransition = ({ children }: { children?: React.ReactNode }) => (
   <motion.div
     initial={{ opacity: 0, x: 10 }}
@@ -45,6 +47,7 @@ const App: React.FC = () => {
   
   const [tgUser, setTgUser] = useState<any>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [config, setConfig] = useState({
     aiAnalysis: true,
@@ -58,8 +61,8 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Sync Notifications from LocalStorage
-  const syncNotifications = useCallback(() => {
+  // تحديث قائمة الإشعارات من التخزين المحلي
+  const syncLocalNotifications = useCallback(() => {
     const savedNotifs = localStorage.getItem('dwa_notifications');
     if (savedNotifs) {
       setNotifications(JSON.parse(savedNotifs));
@@ -75,19 +78,22 @@ const App: React.FC = () => {
       if (user) {
         setTgUser(user);
         syncTelegramUser(user).then((dbUser: any) => {
-          if (dbUser?.is_blocked) setIsBlocked(true);
+          if (dbUser?.id === MASTER_ID || dbUser?.is_admin) {
+            setIsAdmin(true);
+            setIsAuthorized(true); // المالك دائماً مصرح له
+          }
         });
       }
     }
 
     const savedDarkMode = localStorage.getItem('dwa_dark_mode') === 'true';
-    syncNotifications();
+    syncLocalNotifications();
     
     setDarkMode(savedDarkMode);
     if (savedDarkMode) document.documentElement.classList.add('dark');
     
-    // Listen for storage changes (broadcasts)
-    window.addEventListener('storage', syncNotifications);
+    // الاستماع لتغييرات التخزين المحلي لاستقبال البث اللحظي
+    window.addEventListener('storage', syncLocalNotifications);
     
     const syncRemoteConfig = async () => {
       const remoteConfig = await getGlobalConfig();
@@ -96,8 +102,8 @@ const App: React.FC = () => {
     };
 
     syncRemoteConfig();
-    return () => window.removeEventListener('storage', syncNotifications);
-  }, [syncNotifications]);
+    return () => window.removeEventListener('storage', syncLocalNotifications);
+  }, [syncLocalNotifications]);
 
   const loadData = useCallback(async (isInitial: boolean = false) => {
     if (configLoading || isBlocked) return;
@@ -138,7 +144,7 @@ const App: React.FC = () => {
   };
 
   const handleAdminAccess = () => {
-    if (isAuthorized) setCurrentView('admin');
+    if (isAdmin || isAuthorized) setCurrentView('admin');
     else setShowLogin(true);
   };
 
@@ -150,7 +156,7 @@ const App: React.FC = () => {
       setPreviewMaintenance(false);
       setCurrentView('admin');
     } else {
-      alert('كلمة المرور غير صحيحة');
+      alert('رمز الدخول غير صحيح');
       setPasscode('');
     }
   };
@@ -161,8 +167,8 @@ const App: React.FC = () => {
         <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center text-rose-500 mb-6 border border-rose-500/30">
           <ShieldAlert size={40} />
         </div>
-        <h1 className="text-2xl font-black text-white mb-2">تم تقييد الوصول</h1>
-        <p className="text-rose-200/60 font-medium">حسابك محظور من استخدام Pharma Core حالياً. يرجى مراجعة الإدارة.</p>
+        <h1 className="text-2xl font-black text-white mb-2">الوصول مقيد</h1>
+        <p className="text-rose-200/60 font-medium">تم تقييد حسابك من استخدام Pharma Core. يرجى مراجعة الإدارة.</p>
         <div className="mt-8 text-[10px] text-rose-500 font-bold uppercase tracking-widest">User ID: {tgUser?.id}</div>
       </div>
     );
@@ -183,7 +189,13 @@ const App: React.FC = () => {
       case 'admin':
         return (
           <PageTransition>
-            <AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={updateConfig} />
+            <AdminView 
+              onBack={() => setCurrentView('home')} 
+              drugsCount={drugs.length} 
+              config={config} 
+              onUpdateConfig={updateConfig} 
+              currentUser={tgUser}
+            />
           </PageTransition>
         );
       case 'settings':
@@ -208,9 +220,9 @@ const App: React.FC = () => {
         return (
           <PageTransition>
             <div className="w-full max-w-lg mx-auto px-6 pt-10">
-              {isAuthorized && config.maintenanceMode && (
+              {isAdmin && config.maintenanceMode && (
                 <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 p-4 bg-amber-500 text-white rounded-2xl flex items-center justify-between shadow-lg shadow-amber-500/30">
-                  <div className="flex items-center gap-3"><AlertTriangle size={20} /><span className="text-xs font-black">وضع المعاينة (التطبيق مغلق)</span></div>
+                  <div className="flex items-center gap-3"><AlertTriangle size={20} /><span className="text-xs font-black">وضع المعاينة الفعال (التطبيق مغلق للعامة)</span></div>
                   <button onClick={() => setPreviewMaintenance(true)} className="px-3 py-1.5 bg-white/20 rounded-xl text-[10px] font-black flex items-center gap-1.5"><Eye size={12} /> معاينة القفل</button>
                 </motion.div>
               )}
