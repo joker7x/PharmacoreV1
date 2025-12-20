@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert } from 'lucide-react';
+import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchDrugBatchFromAPI } from './services/api.ts';
 import { Drug, TabMode, AppView, AppNotification } from './types.ts';
@@ -17,13 +17,7 @@ import { getGlobalConfig, updateGlobalConfig, syncTelegramUser } from './service
 const MASTER_ID = 1541678512;
 
 const PageTransition = ({ children }: { children?: React.ReactNode }) => (
-  <motion.div
-    initial={{ opacity: 0, x: 10 }}
-    animate={{ opacity: 1, x: 0 }}
-    exit={{ opacity: 0, x: -10 }}
-    transition={{ type: "spring", damping: 25, stiffness: 200 }}
-    className="w-full"
-  >
+  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="w-full">
     {children}
   </motion.div>
 );
@@ -48,12 +42,13 @@ const App: React.FC = () => {
   const [tgUser, setTgUser] = useState<any>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [itemsLimit, setItemsLimit] = useState(100);
 
   const [config, setConfig] = useState({
     aiAnalysis: true,
     marketCheck: true,
     maintenanceMode: false,
-    maintenanceMessage: "نظام Pharma Core حالياً في وضع التحديث لضمان دقة البيانات وتجربة استخدام أسرع.",
+    maintenanceMessage: "نظام Pharma Core حالياً في وضع التحديث لضمان دقة البيانات.",
     maintenanceTime: "ساعة واحدة",
     liveSync: true
   });
@@ -61,11 +56,12 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // تحديث قائمة الإشعارات من التخزين المحلي
   const syncLocalNotifications = useCallback(() => {
-    const savedNotifs = localStorage.getItem('dwa_notifications');
-    if (savedNotifs) {
-      setNotifications(JSON.parse(savedNotifs));
+    try {
+      const savedNotifs = localStorage.getItem('dwa_notifications');
+      if (savedNotifs) setNotifications(JSON.parse(savedNotifs));
+    } catch (e) {
+      console.error("Failed to sync notifications", e);
     }
   }, []);
 
@@ -80,68 +76,81 @@ const App: React.FC = () => {
         syncTelegramUser(user).then((dbUser: any) => {
           if (dbUser?.id === MASTER_ID || dbUser?.is_admin) {
             setIsAdmin(true);
-            setIsAuthorized(true); // المالك دائماً مصرح له
+            setIsAuthorized(true);
+            setItemsLimit(100000); // Unlimited
+          } else {
+            const info = dbUser?.device_info || {};
+            if (info.is_blocked) setIsBlocked(true);
+            setItemsLimit(info.items_limit || 100);
           }
-        });
+        }).catch(err => console.error("Sync user failed", err));
       }
     }
 
     const savedDarkMode = localStorage.getItem('dwa_dark_mode') === 'true';
     syncLocalNotifications();
-    
     setDarkMode(savedDarkMode);
     if (savedDarkMode) document.documentElement.classList.add('dark');
     
-    // الاستماع لتغييرات التخزين المحلي لاستقبال البث اللحظي
+    // استخدام الطريقة الأكثر أماناً للاستماع للتغييرات
     window.addEventListener('storage', syncLocalNotifications);
     
     const syncRemoteConfig = async () => {
-      const remoteConfig = await getGlobalConfig();
-      if (remoteConfig) setConfig(remoteConfig);
-      setConfigLoading(false);
+      try {
+        const remoteConfig = await getGlobalConfig();
+        if (remoteConfig) setConfig(remoteConfig);
+      } catch (e) {
+        console.error("Config sync failed", e);
+      } finally {
+        setConfigLoading(false);
+      }
     };
-
     syncRemoteConfig();
     return () => window.removeEventListener('storage', syncLocalNotifications);
   }, [syncLocalNotifications]);
 
   const loadData = useCallback(async (isInitial: boolean = false) => {
     if (configLoading || isBlocked) return;
-    if (config.maintenanceMode && !isAuthorized) {
-        setLoading(false);
-        return;
-    }
     
+    // تطبيق سقف البيانات للمستخدمين
+    if (!isInitial && drugs.length >= itemsLimit) {
+      setHasMore(false);
+      return;
+    }
+
     setLoading(true);
     const currentOffset = isInitial ? 0 : offset;
     try {
       const results = await fetchDrugBatchFromAPI(currentOffset);
       let filtered = results;
+      
       if (mode === 'changed') filtered = results.filter(d => d.price_new !== null && d.price_old !== null && d.price_new !== d.price_old);
       if (search) {
         const s = search.toLowerCase();
         filtered = filtered.filter(d => (d.name_en?.toLowerCase().includes(s)) || (d.name_ar?.includes(s)));
       }
-      if (isInitial) setDrugs(filtered);
-      else setDrugs(prev => [...prev, ...filtered]);
+
+      if (isInitial) {
+        const sliced = filtered.slice(0, itemsLimit);
+        setDrugs(sliced);
+        setHasMore(sliced.length >= 100 && sliced.length < itemsLimit);
+      } else {
+        const remainingSpace = itemsLimit - drugs.length;
+        const sliced = filtered.slice(0, Math.max(0, remainingSpace));
+        setDrugs(prev => [...prev, ...sliced]);
+        setHasMore(sliced.length >= 100 && (drugs.length + sliced.length) < itemsLimit);
+      }
       setOffset(currentOffset + 100);
-      setHasMore(results.length === 100);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [offset, search, mode, config.maintenanceMode, isAuthorized, configLoading, isBlocked]);
+  }, [offset, search, mode, configLoading, isBlocked, itemsLimit, drugs.length]);
 
   useEffect(() => {
     if (!configLoading) loadData(true);
-  }, [mode, search, config.maintenanceMode, configLoading]);
-
-  const updateConfig = async (newConfig: any) => {
-    const updated = { ...config, ...newConfig };
-    setConfig(updated);
-    await updateGlobalConfig(updated);
-  };
+  }, [mode, search, config.maintenanceMode, configLoading, itemsLimit]);
 
   const handleAdminAccess = () => {
     if (isAdmin || isAuthorized) setCurrentView('admin');
@@ -150,106 +159,85 @@ const App: React.FC = () => {
 
   const handleLogin = () => {
     if (passcode === '547419') {
-      setIsAuthorized(true);
-      setShowLogin(false);
-      setPasscode('');
-      setPreviewMaintenance(false);
-      setCurrentView('admin');
+      setIsAuthorized(true); setShowLogin(false); setPasscode('');
+      setPreviewMaintenance(false); setCurrentView('admin');
+      setItemsLimit(100000);
     } else {
-      alert('رمز الدخول غير صحيح');
-      setPasscode('');
+      alert('رمز الدخول غير صحيح'); setPasscode('');
+    }
+  };
+
+  const updateConfig = async (newConfig: any) => { 
+    const updated = { ...config, ...newConfig }; 
+    setConfig(updated); 
+    try {
+      await updateGlobalConfig(updated);
+    } catch (e) {
+      console.error("Config update failed", e);
     }
   };
 
   if (isBlocked) {
     return (
-      <div className="min-h-screen bg-rose-950 flex flex-col items-center justify-center p-8 text-center" dir="rtl">
-        <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center text-rose-500 mb-6 border border-rose-500/30">
-          <ShieldAlert size={40} />
-        </div>
-        <h1 className="text-2xl font-black text-white mb-2">الوصول مقيد</h1>
-        <p className="text-rose-200/60 font-medium">تم تقييد حسابك من استخدام Pharma Core. يرجى مراجعة الإدارة.</p>
-        <div className="mt-8 text-[10px] text-rose-500 font-bold uppercase tracking-widest">User ID: {tgUser?.id}</div>
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-xs">
+          <div className="w-24 h-24 bg-rose-500/20 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-8 border border-rose-500/30 shadow-2xl shadow-rose-500/20">
+            <Ban size={48} />
+          </div>
+          <h1 className="text-3xl font-black text-white mb-4">الدخول محظور</h1>
+          <p className="text-zinc-400 font-bold leading-relaxed mb-8">تم تقييد وصولك لهذا التطبيق من قبل الإدارة. يرجى التواصل مع الدعم الفني للاستفسار.</p>
+          <div className="py-3 px-6 bg-zinc-900 rounded-2xl border border-white/5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">User ID: {tgUser?.id}</div>
+        </motion.div>
       </div>
     );
   }
 
-  if (configLoading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="animate-spin text-blue-500" size={32} />
-      </div>
-    );
-  }
+  if (configLoading) return <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>;
 
   const isMaintenanceActive = config.maintenanceMode && (!isAuthorized || previewMaintenance);
 
   const renderView = () => {
     switch (currentView) {
       case 'admin':
-        return (
-          <PageTransition>
-            <AdminView 
-              onBack={() => setCurrentView('home')} 
-              drugsCount={drugs.length} 
-              config={config} 
-              onUpdateConfig={updateConfig} 
-              currentUser={tgUser}
-            />
-          </PageTransition>
-        );
+        return <PageTransition><AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={updateConfig} currentUser={tgUser}/></PageTransition>;
       case 'settings':
-        return (
-          <PageTransition>
-            <SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => {
-              const next = !darkMode;
-              setDarkMode(next);
-              localStorage.setItem('dwa_dark_mode', String(next));
-              if (next) document.documentElement.classList.add('dark');
-              else document.documentElement.classList.remove('dark');
-            }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} />
-          </PageTransition>
-        );
+        return <PageTransition><SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); localStorage.setItem('dwa_dark_mode', String(next)); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} /></PageTransition>;
       case 'stats':
-        return (
-          <PageTransition>
-            <StatsView drugs={drugs} onBack={() => setCurrentView('home')} />
-          </PageTransition>
-        );
+        return <PageTransition><StatsView drugs={drugs} onBack={() => setCurrentView('home')} /></PageTransition>;
       default:
         return (
           <PageTransition>
             <div className="w-full max-w-lg mx-auto px-6 pt-10">
               {isAdmin && config.maintenanceMode && (
-                <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 p-4 bg-amber-500 text-white rounded-2xl flex items-center justify-between shadow-lg shadow-amber-500/30">
-                  <div className="flex items-center gap-3"><AlertTriangle size={20} /><span className="text-xs font-black">وضع المعاينة الفعال (التطبيق مغلق للعامة)</span></div>
+                <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-6 p-4 bg-amber-500 text-white rounded-2xl flex items-center justify-between shadow-lg">
+                  <div className="flex items-center gap-3"><AlertTriangle size={20} /><span className="text-xs font-black">وضع المعاينة الفعال</span></div>
                   <button onClick={() => setPreviewMaintenance(true)} className="px-3 py-1.5 bg-white/20 rounded-xl text-[10px] font-black flex items-center gap-1.5"><Eye size={12} /> معاينة القفل</button>
                 </motion.div>
               )}
 
               <div className="flex items-center justify-between mb-8">
-                <button onClick={() => setShowNotifications(true)} className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-white/10 active:scale-90 transition-all shadow-sm relative">
+                <button onClick={() => setShowNotifications(true)} className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-white/10 active:scale-90 relative">
                   <Bell size={20} />
                   {notifications.some(n => !n.isRead) && <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 animate-bounce" />}
                 </button>
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform" onClick={handleAdminAccess}>
+                  <div className="flex items-center justify-center gap-2 cursor-pointer active:scale-95" onClick={handleAdminAccess}>
                     <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pharma <span className="text-blue-600 font-medium">Core</span></h1>
                   </div>
                   <div className="flex items-center justify-center gap-1.5 mt-1">
-                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">CORE ENGINE ACTIVE</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">ACTIVE SESSION</span>
                     <div className={`w-1.5 h-1.5 rounded-full ${config.maintenanceMode ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`} />
                   </div>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-90 transition-all">
-                  {config.aiAnalysis ? <Sparkles size={20} fill="currentColor" /> : <Layout size={20} />}
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                  <Sparkles size={20} fill="currentColor" />
                 </div>
               </div>
               
               <div className="relative mb-6">
                 <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-slate-400"><Search size={20} /></div>
-                <input type="text" placeholder="ابحث عن دواء بالاسم..." value={search} onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl px-6 pr-12 py-4.5 text-[16px] font-bold shadow-sm outline-none placeholder:text-slate-400 dark:text-white focus:ring-4 focus:ring-blue-500/10 dark:focus:border-blue-500/30 transition-all text-right" />
+                <input type="text" placeholder="ابحث عن دواء..." value={search} onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl px-6 pr-12 py-4.5 text-[16px] font-bold shadow-sm outline-none text-right placeholder:text-slate-400" />
               </div>
 
               <TabFilter current={mode} onChange={setMode} />
@@ -266,12 +254,19 @@ const App: React.FC = () => {
                           {loading ? <RefreshCw className="animate-spin" size={18} /> : <span>عرض المزيد من الأصناف</span>}
                         </motion.button>
                       )}
+                      {!hasMore && drugs.length >= itemsLimit && itemsLimit < 10000 && (
+                        <div className="p-8 text-center bg-blue-500/5 rounded-[40px] border border-dashed border-blue-500/20">
+                          <Lock size={32} className="mx-auto text-blue-500/40 mb-3" />
+                          <p className="text-[11px] font-black text-blue-500/60 uppercase tracking-widest">وصلت للحد المسموح ({itemsLimit} صنف)</p>
+                          <p className="text-[10px] text-zinc-500 font-bold mt-1">يرجى التواصل مع الإدارة لرفع القيود عن حسابك</p>
+                        </div>
+                      )}
                     </>
                   ) : loading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-32 rounded-[32px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 loading-shimmer" />) : (
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
+                    <div className="text-center py-20">
                       <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mx-auto mb-6 text-slate-300 dark:text-slate-700"><Package size={48} /></div>
-                      <p className="font-bold text-slate-400 dark:text-zinc-600">لا توجد نتائج مطابقة لبحثك</p>
-                    </motion.div>
+                      <p className="font-bold text-slate-400 dark:text-zinc-600">لا توجد نتائج مطابقة</p>
+                    </div>
                   )}
                 </AnimatePresence>
               </div>

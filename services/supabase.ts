@@ -28,10 +28,6 @@ export const updateGlobalConfig = async (config: any): Promise<void> => {
   } catch (e) {}
 };
 
-/**
- * مزامنة مستخدم التليجرام مع قاعدة البيانات
- * يتم التعامل مع المالك برقم تليجرام 1541678512 كأدمن مطلق
- */
 export const syncTelegramUser = async (user: any): Promise<any> => {
   if (!user?.id) return null;
   try {
@@ -41,8 +37,7 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
 
     const isMaster = Number(user.id) === MASTER_ADMIN_ID;
     
-    // البيانات الأساسية المتوافقة مع هيكل جدول المستخدم
-    const userData = {
+    const userData: any = {
       id: user.id,
       first_name: user.first_name || "",
       last_name: user.last_name || "",
@@ -57,7 +52,6 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
         headers: { ...headers, 'Prefer': 'return=minimal' },
         body: JSON.stringify(userData)
       });
-      // نرجع الـ is_admin الحقيقي من الداتا أو نعتمد على الـ ID للمالك
       return { ...existingUser, ...userData, is_admin: existingUser.is_premium || isMaster };
     } else {
       const createRes = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
@@ -66,15 +60,14 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
         body: JSON.stringify({ 
           ...userData, 
           created_at: new Date().toISOString(),
-          is_premium: isMaster // نستخدم is_premium كعلامة للأدمن للمالك في حال غياب حقل is_admin
+          is_premium: isMaster,
+          device_info: { is_blocked: false, items_limit: 100 } // الإعدادات الافتراضية
         })
       });
       const created = await createRes.json();
-      const newUser = created[0];
-      return { ...newUser, is_admin: isMaster };
+      return { ...created[0], is_admin: isMaster };
     }
   } catch (e) {
-    console.error("User sync error:", e);
     return { id: user.id, is_admin: Number(user.id) === MASTER_ADMIN_ID };
   }
 };
@@ -87,13 +80,32 @@ export const getAllUsers = async (): Promise<any[]> => {
   } catch (e) { return []; }
 };
 
-export const toggleUserAdminStatus = async (userId: number, status: boolean): Promise<void> => {
+export const updateUserPermissions = async (userId: number, permissions: { is_blocked?: boolean, items_limit?: number, is_admin?: boolean }): Promise<void> => {
   if (userId === MASTER_ADMIN_ID) return;
   try {
+    // جلب البيانات الحالية أولاً للحفاظ على الـ device_info القديم
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}&select=device_info,is_premium`, { headers });
+    const data = await res.json();
+    const currentInfo = data[0]?.device_info || {};
+
+    const updatedData: any = {};
+    
+    if (permissions.is_admin !== undefined) {
+      updatedData.is_premium = permissions.is_admin;
+    }
+
+    updatedData.device_info = {
+      ...currentInfo,
+      is_blocked: permissions.is_blocked !== undefined ? permissions.is_blocked : currentInfo.is_blocked,
+      items_limit: permissions.items_limit !== undefined ? permissions.items_limit : currentInfo.items_limit
+    };
+
     await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
       method: 'PATCH',
       headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ is_premium: status }) // نستخدم is_premium كبديل مؤقت للأدمن
+      body: JSON.stringify(updatedData)
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("Update permissions error:", e);
+  }
 };
