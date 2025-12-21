@@ -74,6 +74,7 @@ const App: React.FC = () => {
     if (tg) {
       tg.ready();
       tg.expand();
+      
       const user = tg.initDataUnsafe?.user;
       const startParam = tg.initDataUnsafe?.start_param;
 
@@ -92,15 +93,17 @@ const App: React.FC = () => {
         }).catch(err => console.error("Sync user failed", err));
       }
 
-      // Check for deep links (e.g. inv_INV-ABCD)
-      if (startParam && startParam.startsWith('inv_')) {
-        const invId = startParam.replace('inv_', '');
-        getInvoice(invId).then(inv => {
-          if (inv) {
-            setSharedInvoice(inv);
-            setCurrentView('invoice');
-          }
-        });
+      // تحسين معالجة روابط الفواتير العميقة
+      if (startParam) {
+        if (startParam.startsWith('inv_')) {
+          const invId = startParam.substring(4); // استخراج ID الفاتورة بعد "inv_"
+          getInvoice(invId).then(inv => {
+            if (inv) {
+              setSharedInvoice(inv);
+              setCurrentView('invoice');
+            }
+          }).catch(e => console.error("Invoice Link Error", e));
+        }
       }
     }
 

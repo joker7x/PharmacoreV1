@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check } from 'lucide-react';
 import { Drug, InvoiceItem } from '../types';
 import { searchDrugs, lookupByBarcode, saveInvoice } from '../services/supabase.ts';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface InvoiceBuilderProps {
   onBack: () => void;
@@ -34,43 +35,61 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
   const [manualName, setManualName] = useState('');
   const [manualPrice, setManualPrice] = useState('');
 
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
+  // تحسين تشغيل الكاميرا
   useEffect(() => {
     if (isScanning) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-
-      scannerRef.current.render(
-        async (decodedText) => {
-          setIsScanning(false);
-          scannerRef.current?.clear();
+      const startScanner = async () => {
+        try {
+          // تأخير بسيط لضمان وجود العنصر في الـ DOM
+          await new Promise(r => setTimeout(r, 300));
+          const html5QrCode = new Html5Qrcode("reader");
+          html5QrCodeRef.current = html5QrCode;
           
-          setIsSearching(true);
-          const drug = await lookupByBarcode(decodedText);
-          if (drug) {
-            addItem(drug);
-          } else {
-            alert(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
-          }
-          setIsSearching(false);
-        },
-        () => {}
-      );
+          const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
+          
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            qrConfig,
+            async (decodedText) => {
+              setIsScanning(false);
+              await html5QrCode.stop();
+              
+              setIsSearching(true);
+              const drug = await lookupByBarcode(decodedText);
+              if (drug) {
+                addItem(drug);
+              } else {
+                alert(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
+              }
+              setIsSearching(false);
+            },
+            () => {}
+          );
+        } catch (err) {
+          console.error("Camera failed:", err);
+          alert("تعذر تشغيل الكاميرا، يرجى التأكد من إعطاء الصلاحية.");
+          setIsScanning(false);
+        }
+      };
+
+      startScanner();
     } else {
-      scannerRef.current?.clear();
+      if (html5QrCodeRef.current?.isScanning) {
+        html5QrCodeRef.current.stop();
+      }
     }
 
     return () => {
-      scannerRef.current?.clear();
+      if (html5QrCodeRef.current?.isScanning) {
+        html5QrCodeRef.current.stop();
+      }
     };
   }, [isScanning]);
 
@@ -138,6 +157,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
   const handlePrint = () => {
     if (items.length === 0) return;
     setIsFinalized(true);
+    // إخفاء الـ Navigation وأي عناصر مشتتة قبل الطباعة
     setTimeout(() => {
       window.print();
     }, 800);
@@ -213,7 +233,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                 <h3 className="text-white font-black">امسح الباركود</h3>
                 <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Scanning in progress...</p>
               </div>
-              <div id="reader" className="w-full rounded-2xl overflow-hidden"></div>
+              {/* Container للكاميرا */}
+              <div id="reader" className="w-full aspect-square rounded-2xl overflow-hidden bg-black border border-white/5"></div>
+              <p className="mt-4 text-center text-white/40 text-[10px] font-bold">ضع الباركود بوضوح داخل الإطار</p>
             </div>
           </motion.div>
         )}
@@ -228,7 +250,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             </button>
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-white">منشئ الفواتير</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A4 Professional Creator</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Premium A4 Print Ready</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -254,11 +276,11 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase mr-2 text-right">اسم الصنف</label>
-                  <input type="text" value={manualName} onChange={e => setManualName(e.target.value)} placeholder="مثلاً: بانادول 500 مجم" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-3 px-4 font-bold text-sm outline-none text-right" />
+                  <input type="text" value={manualName} onChange={e => setManualName(e.target.value)} placeholder="مثلاً: بانادول 500 مجم" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-sm outline-none text-right" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase mr-2 text-right">سعر الوحدة</label>
-                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-3 px-4 font-bold text-sm outline-none text-right" />
+                  <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-sm outline-none text-right" />
                 </div>
               </div>
               <button 
@@ -269,7 +291,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                    setItems([...items, item]);
                    setShowManualForm(false);
                 }}
-                className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl"
+                className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl"
               >
                 إضافة للفاتورة
               </button>
@@ -324,104 +346,80 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
         </div>
       </div>
 
-      {/* Floating Action Bar - Finalized Mode */}
-      <AnimatePresence>
-        {isFinalized && (
-          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed top-0 left-0 right-0 z-[160] bg-white/95 backdrop-blur-md border-b border-slate-200 p-4 flex items-center justify-between px-6 print:hidden shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col">
-                <span className="text-sm font-black text-slate-900">{sharedInvoice ? 'معاينة فاتورة سحابية' : 'جاهز للطباعة'}</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{sharedInvoice ? `ID: ${sharedInvoice.id}` : 'A4 Professional Format'}</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {!sharedInvoice && (
-                <button 
-                  onClick={handleShare}
-                  disabled={isSaving}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isCopied ? 'bg-emerald-500 text-white' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'} active:scale-90 shadow-sm disabled:opacity-50`}
-                  title="مشاركة الفاتورة"
-                >
-                  {isSaving ? <Loader2 size={20} className="animate-spin" /> : isCopied ? <Check size={20} /> : <Share2 size={20} />}
-                </button>
-              )}
-              <button onClick={handlePrint} className="px-6 h-12 rounded-full bg-blue-600 text-white text-sm font-black flex items-center gap-2 shadow-xl shadow-blue-500/30">
-                <Printer size={18} /> طباعة
-              </button>
-              <button onClick={() => sharedInvoice ? onBack() : setIsFinalized(false)} className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90">
-                <X size={20} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* INVOICE CONTENT */}
       <div id="print-area" className={`max-w-4xl mx-auto print:max-w-none print:m-0 ${isFinalized ? 'mt-24' : ''}`}>
-        <div className="bg-white dark:bg-zinc-900 print:bg-white print:text-black rounded-[40px] print:rounded-none p-8 sm:p-16 shadow-2xl print:shadow-none border border-slate-100 dark:border-white/10 invoice-document relative">
+        <div className="bg-white dark:bg-zinc-900 print:bg-white print:text-black rounded-[40px] print:rounded-none p-8 sm:p-16 shadow-2xl print:shadow-none border border-slate-100 dark:border-white/10 invoice-document relative overflow-hidden">
           
-          <div className="flex flex-col items-center mb-12 text-center border-b-2 border-slate-900 print:border-black pb-8">
+          {/* Decorative Elements for Print Visuals */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 -mr-32 -mt-32 rounded-full print:hidden" />
+          
+          <div className="flex flex-col items-center mb-12 text-center border-b-2 border-slate-900 print:border-black pb-8 relative z-10">
+             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 print:hidden shadow-xl shadow-blue-500/20">
+                <FileText size={32} />
+             </div>
              <h1 className="text-3xl font-black text-slate-900 print:text-black mb-1 pharmacy-title-main" dir="rtl">{pharmacyName}</h1>
-             <div className="text-[10px] font-black text-blue-600 print:text-black uppercase tracking-[0.3em] mb-6">Estimative Pharmacy Invoice</div>
+             <div className="text-[10px] font-black text-blue-600 print:text-black uppercase tracking-[0.3em] mb-6">Professional Pharmacy System</div>
              
              <div className="flex justify-between w-full text-[10px] font-bold text-slate-500 print:text-black mt-2">
                 <div className="text-right flex flex-col items-start">
-                   <span dir="rtl">التاريخ: {currentTime.toLocaleDateString('ar-EG')}</span>
-                   <span dir="rtl">رقم الفاتورة: {sharedInvoice ? sharedInvoice.id : `#${Date.now().toString().slice(-6)}`}</span>
+                   <span dir="rtl">تاريخ الفاتورة: {currentTime.toLocaleDateString('ar-EG')}</span>
+                   <span dir="rtl">المرجع: {sharedInvoice ? sharedInvoice.id : `#INV-${Date.now().toString().slice(-6)}`}</span>
                 </div>
                 <div className="text-left flex flex-col items-end">
-                   <span>نظام Pharma Core Cloud</span>
-                   <span>Doc Ref: PC-{sharedInvoice ? sharedInvoice.id : Date.now().toString().slice(-4)}</span>
+                   <span>سيستم فارما كور - Pharma Core</span>
+                   <span>Print Ref: {Date.now().toString().slice(-4)}</span>
                 </div>
              </div>
           </div>
 
-          <div className="min-h-[350px] mb-8 overflow-x-auto print:overflow-visible">
+          <div className="min-h-[400px] mb-8 overflow-x-auto print:overflow-visible relative z-10">
             {items.length === 0 ? (
-              <div className="py-20 text-center print:hidden">
-                <Calculator className="mx-auto text-slate-100 dark:text-zinc-800 mb-6" size={64} />
-                <p className="font-bold text-slate-300 dark:text-zinc-700 uppercase tracking-widest">الفاتورة فارغة</p>
+              <div className="py-24 text-center print:hidden">
+                <div className="w-20 h-20 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Calculator className="text-slate-200 dark:text-zinc-800" size={40} />
+                </div>
+                <p className="font-black text-slate-300 dark:text-zinc-700 uppercase tracking-[0.2em]">المستند لا يحتوي على أصناف</p>
               </div>
             ) : (
               <table className="w-full border-collapse invoice-table" dir="rtl">
                 <thead>
                   <tr className="border-b-2 border-slate-900 print:border-black text-[11px] font-black uppercase text-slate-900 print:text-black">
-                    <th className="pb-4 text-right pr-2">الصنف / Item Description</th>
+                    <th className="pb-4 text-right pr-4">الوصف / Description</th>
                     <th className="pb-4 text-center">الكمية</th>
                     <th className="pb-4 text-center">السعر</th>
-                    <th className="pb-4 text-left pl-2">الإجمالي</th>
+                    <th className="pb-4 text-left pl-4">الإجمالي</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 print:divide-slate-200">
                   {items.map(item => (
                     <tr key={item.id} className="invoice-row group">
-                      <td className="py-6 pr-2">
-                        <div className="text-[14px] font-black text-slate-900 print:text-black leading-tight mb-1" dir="rtl">{item.name}</div>
-                        {item.name_ar && <div className="text-[11px] font-bold text-slate-500 print:text-slate-600 arabic-text" dir="rtl">{item.name_ar}</div>}
+                      <td className="py-7 pr-4">
+                        <div className="text-[15px] font-black text-slate-900 print:text-black leading-tight mb-1" dir="rtl">{item.name}</div>
+                        {item.name_ar && <div className="text-[12px] font-bold text-slate-500 print:text-slate-600 arabic-text" dir="rtl">{item.name_ar}</div>}
                         {!isFinalized && !sharedInvoice && (
-                          <button onClick={() => removeItem(item.id)} className="print:hidden text-rose-500 text-[10px] font-bold flex items-center gap-1 mt-2 hover:underline">
+                          <button onClick={() => removeItem(item.id)} className="print:hidden text-rose-500 text-[10px] font-black flex items-center gap-1 mt-3 bg-rose-50 px-3 py-1 rounded-full w-fit hover:bg-rose-100">
                             <Trash2 size={12} /> حذف
                           </button>
                         )}
                       </td>
-                      <td className="py-6 text-center">
-                        <div className="flex items-center justify-center gap-3 print:hidden">
+                      <td className="py-7 text-center">
+                        <div className="flex items-center justify-center gap-4 print:hidden">
                           {!isFinalized && !sharedInvoice ? (
                             <>
-                              <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold active:scale-90">-</button>
-                              <span className="text-[13px] font-black w-4">{item.quantity}</span>
-                              <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold active:scale-90">+</button>
+                              <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-black active:scale-90">-</button>
+                              <span className="text-[15px] font-black w-6">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-black active:scale-90">+</button>
                             </>
                           ) : (
-                            <span className="text-[14px] font-black">{item.quantity}</span>
+                            <span className="text-[15px] font-black">{item.quantity}</span>
                           )}
                         </div>
-                        <span className="hidden print:inline text-[14px] font-black">{item.quantity}</span>
+                        <span className="hidden print:inline text-[15px] font-black">{item.quantity}</span>
                       </td>
-                      <td className="py-6 text-center text-[13px] font-bold text-slate-600 print:text-black">
+                      <td className="py-7 text-center text-[14px] font-bold text-slate-600 print:text-black">
                         {item.unitPrice.toFixed(2)}
                       </td>
-                      <td className="py-6 text-left pl-2 text-[14px] font-black text-slate-900 print:text-black">
+                      <td className="py-7 text-left pl-4 text-[16px] font-black text-slate-900 print:text-black">
                         {(item.unitPrice * item.quantity).toFixed(2)}
                       </td>
                     </tr>
@@ -431,37 +429,37 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             )}
           </div>
 
-          <div className="pt-8 border-t-2 border-slate-900 print:border-black footer-area">
-             <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
-                <div className="total-display text-right flex flex-col items-start order-2 sm:order-1">
-                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Amount Due</div>
+          <div className="pt-10 border-t-2 border-slate-900 print:border-black footer-area relative z-10">
+             <div className="flex flex-col sm:flex-row justify-between items-start mb-20 gap-8">
+                <div className="total-display text-right flex flex-col items-start order-2 sm:order-1 bg-slate-50 print:bg-slate-50/50 p-8 rounded-[40px] border border-slate-100 min-w-[240px]">
+                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Grand Total Payable</div>
                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-black text-slate-900 print:text-black tracking-tighter">
+                      <span className="text-5xl font-black text-slate-900 print:text-black tracking-tighter">
                         {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                      <span className="text-[12px] font-black text-slate-400 print:text-black">EGP</span>
+                      <span className="text-[14px] font-black text-blue-600 print:text-black">EGP</span>
                    </div>
-                   <div className="mt-2 text-[9px] font-bold text-slate-400 print:text-black pt-2 border-t border-slate-100 w-full text-right uppercase tracking-widest">
-                      {items.length} Items Listed
+                   <div className="mt-4 text-[10px] font-black text-slate-500 print:text-black pt-3 border-t border-slate-200/50 w-full text-right uppercase tracking-widest">
+                      Confirmed for {items.length} items
                    </div>
                 </div>
 
-                <div className="stamp-box text-right order-1 sm:order-2">
-                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Verification Stamp</div>
-                   <div className="w-44 h-28 border-2 border-dashed border-slate-200 print:border-slate-400 rounded-3xl flex items-center justify-center">
-                      <span className="text-[8px] font-black text-slate-200 uppercase tracking-tighter print:hidden">Pharmacy Official Stamp Area</span>
+                <div className="stamp-box text-right order-1 sm:order-2 px-4">
+                   <div className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Official Verification</div>
+                   <div className="w-48 h-32 border-2 border-dashed border-slate-200 print:border-slate-300 rounded-[40px] flex items-center justify-center bg-slate-50/30">
+                      <div className="text-[9px] font-black text-slate-200 uppercase rotate-[-12deg] print:hidden">Pharmacy Stamp Required</div>
                    </div>
                 </div>
              </div>
 
-             <div className="flex flex-col sm:flex-row gap-12 sm:gap-16 mb-12" dir="rtl">
-                <div className="flex-1 border-b-2 border-slate-900 print:border-black pb-3 signature-line">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2" dir="rtl">Authorized Signature / توقيع المسؤول</span>
+             <div className="flex flex-col sm:flex-row gap-12 sm:gap-20 mb-10" dir="rtl">
+                <div className="flex-1 border-b-2 border-slate-900 print:border-black pb-4 signature-line">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2" dir="rtl">Accountant Signature / توقيع المحاسب</span>
                 </div>
-                <div className="flex-1 text-left flex flex-col justify-end text-[8px] font-bold text-slate-500 uppercase leading-relaxed tracking-wider disclaimer">
-                   * This document is an estimative guidance for reference only.<br/>
-                   * Official pharmaceutical prices follow standard indices.<br/>
-                   * Generated via Pharma Core Cloud System.
+                <div className="flex-1 text-left flex flex-col justify-end text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-wider disclaimer opacity-60">
+                   * Guidance only / وثيقة استرشادية فقط<br/>
+                   * Prices include local tax / الأسعار تشمل الضريبة<br/>
+                   * System: Pharma Core v3.1 Elite
                 </div>
              </div>
 
@@ -472,16 +470,16 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                         setIsFinalized(true);
                     }}
-                    className="w-full py-6 rounded-[32px] bg-slate-900 text-white font-black text-lg shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 mt-8"
+                    className="w-full py-7 rounded-[36px] bg-blue-600 text-white font-black text-xl shadow-2xl shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-4 mt-10"
                   >
-                    إتمام الفاتورة وتجهيز الطباعة <CheckCircle2 size={24} />
+                    اعتماد الفاتورة وتجهيز الطباعة <CheckCircle2 size={26} />
                   </button>
                   <button 
                     onClick={handleShare}
                     disabled={isSaving}
-                    className="w-full py-4 rounded-2xl bg-emerald-50 text-emerald-600 font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-100 disabled:opacity-50"
+                    className="w-full py-5 rounded-2xl bg-white dark:bg-white/5 text-emerald-600 dark:text-emerald-400 font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-100 dark:border-emerald-500/20"
                   >
-                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />} مشاركة رابط الفاتورة السحابية
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />} مشاركة الرابط السحابي
                   </button>
                </div>
              )}
@@ -490,27 +488,31 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
       </div>
 
       <style>{`
-        /* CSS مخصص للطباعة يضمن حل مشاكل اللغة العربية في الـ PDF */
+        /* 
+           CSS مخصص لضمان تحويل الفاتورة إلى PDF بجودة احترافية وحل مشاكل الخط العربي
+           هذا الكود مصمم ليجعل الطباعة تبدو مثل تصميم التطبيق الفاخر تماماً
+        */
         @media print {
           @page {
             size: A4 portrait;
-            margin: 15mm;
+            margin: 12mm;
           }
 
-          /* الخطوط: نستخدم خطوط النظام التي تدعم العربية بشكل أصلي في PDF */
+          /* تحسين جودة النصوص العربية ومنع تداخل الحروف */
           * {
             font-family: 'Times New Roman', 'Arial', serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            color: #000 !important;
+            text-rendering: geometricPrecision !important;
+            color-adjust: exact !important;
           }
 
-          /* إصلاح مشكلة الحروف المقطعة: الحفاظ على اتجاه النص لكل عنصر */
-          [dir="rtl"], .arabic-text, h1, span, div, td, th {
+          /* معالجة اتجاه النص لضمان سلامة الجمل العربية */
+          [dir="rtl"], .arabic-text, h1, .pharmacy-title-main, td, th {
             direction: rtl !important;
-            unicode-bidi: embed !important;
+            unicode-bidi: bidi-override !important;
             text-align: right !important;
-            white-space: nowrap; /* منع قطع الكلمات الطويلة */
+            white-space: normal !important;
           }
 
           body {
@@ -526,53 +528,65 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             padding: 0 !important;
             width: 100% !important;
             max-width: none !important;
+            background: white !important;
           }
 
-          .print\\:hidden, .fixed, button, input[type="text"], .lucide {
+          /* إخفاء العناصر غير الضرورية */
+          .print\\:hidden, .fixed, button, .lucide, .absolute, input {
             display: none !important;
+            visibility: hidden !important;
           }
 
           .pharmacy-title-main {
-            font-size: 32pt !important;
+            font-size: 34pt !important;
             font-weight: bold !important;
-            margin-bottom: 5pt !important;
+            margin-bottom: 8pt !important;
             text-align: center !important;
+            color: black !important;
           }
 
           .invoice-table {
             width: 100% !important;
             border-collapse: collapse !important;
-            margin: 20pt 0 !important;
+            margin: 25pt 0 !important;
           }
 
           .invoice-table th {
-            border-bottom: 2pt solid #000 !important;
-            padding: 10pt !important;
-            font-size: 12pt !important;
+            border-bottom: 2.5pt solid black !important;
+            padding: 12pt !important;
+            font-size: 13pt !important;
+            color: black !important;
           }
 
           .invoice-row td {
-            border-bottom: 1pt solid #ddd !important;
-            padding: 12pt 5pt !important;
-            font-size: 11pt !important;
+            border-bottom: 0.8pt solid #ccc !important;
+            padding: 15pt 8pt !important;
+            font-size: 12pt !important;
+            color: black !important;
           }
 
           .total-display {
+            background-color: #f8fafc !important;
+            border: 1pt solid #e2e8f0 !important;
+            float: left !important;
             text-align: left !important;
             direction: ltr !important;
-            float: left;
-            width: auto;
+            min-width: 250pt !important;
           }
 
           .footer-area {
             clear: both;
-            margin-top: 30pt !important;
-            border-top: 2pt solid #000 !important;
+            margin-top: 40pt !important;
+            border-top: 2.5pt solid black !important;
           }
           
-          /* إجبار إظهار العناوين باللون الأسود */
-          h1, h2, h3, h4, b, strong {
+          h1, b, strong, .font-black {
             color: black !important;
+            font-weight: bold !important;
+          }
+
+          .text-slate-400, .text-slate-500 {
+            color: #666 !important;
           }
         }
 
