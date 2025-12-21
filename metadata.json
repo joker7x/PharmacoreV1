@@ -2,6 +2,7 @@
   "name": "Pharma Core",
   "description": "The professional standard for drug inventory and price tracking.",
   "requestFramePermissions": [
+    "camera",
     "geolocation"
   ]
 }

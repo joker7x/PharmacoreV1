@@ -6,7 +6,8 @@ import { checkDrugAvailability } from "./tawreed";
 export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress: (msg: string) => void): Promise<DeepMarketAnalysis & { volatilityScore: number }> => {
     try {
         // الاستخدام الصحيح للمكتبة حسب الدليل
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+        // Fix: Use process.env.API_KEY directly as per guidelines
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         onProgress('تحليل سلوكيات الشركات...');
         
@@ -36,7 +37,8 @@ export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress:
 
 export const analyzeSingleDrugStrategy = async (name: string, price: number, company: string, marketAvailability: string): Promise<any> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+        // Fix: Use process.env.API_KEY directly as per guidelines
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const prompt = `
             Evaluate this drug for pharmacy inventory: ${name}, Price: ${price}, Company: ${company}.

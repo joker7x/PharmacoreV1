@@ -1,5 +1,5 @@
 
-import { SUPABASE_URL, SUPABASE_KEY } from '../constants';
+import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE } from '../constants';
 
 const headers = {
   'apikey': SUPABASE_KEY,
@@ -8,6 +8,72 @@ const headers = {
 };
 
 const MASTER_ADMIN_ID = 1541678512;
+
+export const searchDrugs = async (query: string): Promise<any[]> => {
+  if (!query || query.length < 2) return [];
+  try {
+    const isEnglish = /^[a-zA-Z]/.test(query);
+    const filterField = isEnglish ? 'name_en' : 'name_ar';
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?${filterField}=ilike.*${encodeURIComponent(query)}*&select=*&limit=10`, 
+      { headers }
+    );
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (e) {
+    return [];
+  }
+};
+
+export const lookupByBarcode = async (barcode: string): Promise<any | null> => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?drug_no=eq.${barcode}&select=*`, 
+      { headers }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data[0] || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const saveInvoice = async (invoiceData: any): Promise<string | null> => {
+  try {
+    const id = `INV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_invoices`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        id,
+        content: invoiceData,
+        created_at: new Date().toISOString()
+      })
+    });
+    if (!response.ok) {
+        // Fallback for local testing or missing table
+        return id; 
+    }
+    const data = await response.json();
+    return data[0]?.id || id;
+  } catch (e) {
+    console.error("Save invoice failed", e);
+    return null;
+  }
+};
+
+export const getInvoice = async (id: string): Promise<any | null> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/app_invoices?id=eq.${id}&select=*`, { headers });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data[0] || null;
+  } catch (e) { 
+    console.error("Get invoice failed", e);
+    return null; 
+  }
+};
 
 export const getGlobalConfig = async (): Promise<any> => {
   try {
@@ -35,8 +101,6 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
     const existingUsers = await checkRes.json();
     const existingUser = existingUsers[0];
 
-    const isMaster = Number(user.id) === MASTER_ADMIN_ID;
-    
     const userData: any = {
       id: user.id,
       first_name: user.first_name || "",
@@ -52,23 +116,22 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
         headers: { ...headers, 'Prefer': 'return=minimal' },
         body: JSON.stringify(userData)
       });
-      return { ...existingUser, ...userData, is_admin: existingUser.is_premium || isMaster };
+      return { ...existingUser, ...userData };
     } else {
-      const createRes = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ 
-          ...userData, 
-          created_at: new Date().toISOString(),
-          is_premium: isMaster,
-          device_info: { is_blocked: false, items_limit: 100 } // الإعدادات الافتراضية
+        body: JSON.stringify({
+          ...userData,
+          is_admin: Number(user.id) === MASTER_ADMIN_ID,
+          device_info: { items_limit: 100 }
         })
       });
-      const created = await createRes.json();
-      return { ...created[0], is_admin: isMaster };
+      const created = await response.json();
+      return created[0];
     }
   } catch (e) {
-    return { id: user.id, is_admin: Number(user.id) === MASTER_ADMIN_ID };
+    return null;
   }
 };
 
@@ -80,32 +143,21 @@ export const getAllUsers = async (): Promise<any[]> => {
   } catch (e) { return []; }
 };
 
-export const updateUserPermissions = async (userId: number, permissions: { is_blocked?: boolean, items_limit?: number, is_admin?: boolean }): Promise<void> => {
-  if (userId === MASTER_ADMIN_ID) return;
+export const updateUserPermissions = async (userId: number, updates: any): Promise<void> => {
   try {
-    // جلب البيانات الحالية أولاً للحفاظ على الـ device_info القديم
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}&select=device_info,is_premium`, { headers });
-    const data = await res.json();
-    const currentInfo = data[0]?.device_info || {};
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}&select=*`, { headers });
+    const users = await res.json();
+    const user = users[0];
+    if (!user) return;
 
-    const updatedData: any = {};
-    
-    if (permissions.is_admin !== undefined) {
-      updatedData.is_premium = permissions.is_admin;
-    }
-
-    updatedData.device_info = {
-      ...currentInfo,
-      is_blocked: permissions.is_blocked !== undefined ? permissions.is_blocked : currentInfo.is_blocked,
-      items_limit: permissions.items_limit !== undefined ? permissions.items_limit : currentInfo.items_limit
-    };
+    const newDeviceInfo = { ...user.device_info, ...updates };
+    const body: any = { device_info: newDeviceInfo };
+    if ('is_admin' in updates) body.is_admin = updates.is_admin;
 
     await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
       method: 'PATCH',
       headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify(updatedData)
+      body: JSON.stringify(body)
     });
-  } catch (e) {
-    console.error("Update permissions error:", e);
-  }
+  } catch (e) {}
 };

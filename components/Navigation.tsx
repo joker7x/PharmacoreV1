@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, BarChart2, MoreHorizontal } from 'lucide-react';
+import { Home, BarChart2, MoreHorizontal, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AppView } from '../types.ts';
 
@@ -13,11 +13,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView,
   const tabs: { id: AppView; label: string; icon: React.ReactNode }[] = [
     { id: 'settings', label: 'المزيد', icon: <MoreHorizontal size={22} /> },
     { id: 'stats', label: 'إحصائيات', icon: <BarChart2 size={22} /> },
+    { id: 'invoice', label: 'فاتورة', icon: <FileText size={22} /> },
     { id: 'home', label: 'الرئيسية', icon: <Home size={22} /> },
   ];
 
   const handleNavClick = (view: AppView) => {
-    // Scroll to top logic: if clicking Home while already on Home view
     if (view === 'home' && currentView === 'home') {
       window.scrollTo({
         top: 0,
@@ -29,8 +29,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView,
   };
 
   return (
-    <div className="fixed bottom-8 left-0 right-0 z-[100] flex justify-center px-8">
-      <div className="glass-effect rounded-[36px] px-6 py-2 shadow-mobile-lg flex items-center justify-between w-full max-w-[340px] border border-white/20 dark:border-white/10">
+    <div className="fixed bottom-8 left-0 right-0 z-[100] flex justify-center px-8 print:hidden">
+      <div className="glass-effect rounded-[36px] px-6 py-2 shadow-mobile-lg flex items-center justify-between w-full max-w-[380px] border border-white/20 dark:border-white/10">
         {tabs.map((tab) => {
           const isActive = currentView === tab.id;
           return (

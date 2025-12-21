@@ -12,7 +12,8 @@ import { DrugIntelligenceModal } from './components/DrugIntelligenceModal.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { AdminView } from './components/AdminView.tsx';
 import { NotificationsModal } from './components/NotificationsModal.tsx';
-import { getGlobalConfig, updateGlobalConfig, syncTelegramUser } from './services/supabase.ts';
+import { InvoiceBuilder } from './components/InvoiceBuilder.tsx';
+import { getGlobalConfig, updateGlobalConfig, syncTelegramUser, getInvoice } from './services/supabase.ts';
 
 const MASTER_ID = 1541678512;
 
@@ -44,6 +45,9 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [itemsLimit, setItemsLimit] = useState(100);
 
+  // Shared Invoice Data
+  const [sharedInvoice, setSharedInvoice] = useState<any | null>(null);
+
   const [config, setConfig] = useState({
     aiAnalysis: true,
     marketCheck: true,
@@ -71,19 +75,32 @@ const App: React.FC = () => {
       tg.ready();
       tg.expand();
       const user = tg.initDataUnsafe?.user;
+      const startParam = tg.initDataUnsafe?.start_param;
+
       if (user) {
         setTgUser(user);
         syncTelegramUser(user).then((dbUser: any) => {
           if (dbUser?.id === MASTER_ID || dbUser?.is_admin) {
             setIsAdmin(true);
             setIsAuthorized(true);
-            setItemsLimit(100000); // Unlimited
+            setItemsLimit(100000); 
           } else {
             const info = dbUser?.device_info || {};
             if (info.is_blocked) setIsBlocked(true);
             setItemsLimit(info.items_limit || 100);
           }
         }).catch(err => console.error("Sync user failed", err));
+      }
+
+      // Check for deep links (e.g. inv_INV-ABCD)
+      if (startParam && startParam.startsWith('inv_')) {
+        const invId = startParam.replace('inv_', '');
+        getInvoice(invId).then(inv => {
+          if (inv) {
+            setSharedInvoice(inv);
+            setCurrentView('invoice');
+          }
+        });
       }
     }
 
@@ -92,7 +109,6 @@ const App: React.FC = () => {
     setDarkMode(savedDarkMode);
     if (savedDarkMode) document.documentElement.classList.add('dark');
     
-    // استخدام الطريقة الأكثر أماناً للاستماع للتغييرات
     window.addEventListener('storage', syncLocalNotifications);
     
     const syncRemoteConfig = async () => {
@@ -112,7 +128,6 @@ const App: React.FC = () => {
   const loadData = useCallback(async (isInitial: boolean = false) => {
     if (configLoading || isBlocked) return;
     
-    // تطبيق سقف البيانات للمستخدمين
     if (!isInitial && drugs.length >= itemsLimit) {
       setHasMore(false);
       return;
@@ -204,6 +219,8 @@ const App: React.FC = () => {
         return <PageTransition><SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); localStorage.setItem('dwa_dark_mode', String(next)); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} /></PageTransition>;
       case 'stats':
         return <PageTransition><StatsView drugs={drugs} onBack={() => setCurrentView('home')} /></PageTransition>;
+      case 'invoice':
+        return <PageTransition><InvoiceBuilder onBack={() => { setSharedInvoice(null); setCurrentView('home'); }} sharedInvoice={sharedInvoice} /></PageTransition>;
       default:
         return (
           <PageTransition>
@@ -296,7 +313,7 @@ const App: React.FC = () => {
           <div key="app-content" className="w-full">{renderView()}</div>
         )}
       </AnimatePresence>
-      {!isMaintenanceActive && <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />}
+      {!isMaintenanceActive && (currentView !== 'invoice') && <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />}
       <AnimatePresence>{showNotifications && <NotificationsModal notifications={notifications} onClose={() => setShowNotifications(false)} onClear={() => { setNotifications([]); localStorage.setItem('dwa_notifications', JSON.stringify([])); }} />}</AnimatePresence>
       <AnimatePresence>{showLogin && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
