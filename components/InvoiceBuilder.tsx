@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check, Download } from 'lucide-react';
@@ -138,10 +139,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
   const handlePrint = () => {
     if (items.length === 0) return;
     setIsFinalized(true);
-    // ننتظر قليلاً للتأكد من تحديث الواجهة قبل طلب الطباعة
+    // ننتظر قليلاً للتأكد من تحديث الواجهة قبل طلب الطباعة لضمان التقاط التصميم الجديد
     setTimeout(() => {
       window.print();
-    }, 500);
+    }, 700);
   };
 
   const handleShare = async () => {
@@ -499,7 +500,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm; /* تقليل الهوامش لزيادة مساحة المحتوى */
+            margin: 10mm; 
           }
 
           html, body {
@@ -507,12 +508,13 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             color: #000 !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 210mm; /* تثبيت عرض A4 */
+            width: 210mm; 
             height: auto !important;
             direction: rtl !important;
             text-align: right !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Arial', sans-serif !important;
           }
 
           /* Force Arabic Font Embedding fallback for PDF Drivers */
@@ -523,18 +525,19 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             text-rendering: optimizeLegibility;
             font-feature-settings: "kern" 1, "liga" 1;
             direction: rtl !important;
+            unicode-bidi: plaintext !important;
           }
 
           .invoice-document {
             display: block !important;
             border: none !important;
-            padding: 10mm !important; /* هامش داخلي للورقة */
+            padding: 10mm !important; 
             margin: 0 auto !important;
             box-shadow: none !important;
             width: 100% !important;
             background: #fff !important;
             color: #000 !important;
-            min-height: 297mm; /* ضمان ارتفاع A4 */
+            min-height: 297mm; 
           }
 
           /* إخفاء عناصر التحكم في التطبيق أثناء الطباعة */
@@ -554,12 +557,14 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             font-weight: 900 !important;
             color: #000 !important;
             margin-bottom: 5mm !important;
+            direction: rtl !important;
           }
 
           .invoice-table {
             width: 100% !important;
             border-collapse: collapse !important;
             margin-top: 10mm !important;
+            direction: rtl !important;
           }
 
           .invoice-table th {
@@ -569,6 +574,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             font-size: 11pt !important;
             background-color: #f9f9f9 !important;
             color: #000 !important;
+            text-align: right !important;
           }
 
           .invoice-row td {
@@ -576,12 +582,15 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             padding: 4mm 2mm !important;
             vertical-align: middle !important;
             color: #000 !important;
+            text-align: right !important;
           }
 
           .arabic-text {
             font-size: 10pt !important;
             font-weight: 700 !important;
             color: #444 !important;
+            direction: rtl !important;
+            unicode-bidi: plaintext !important;
           }
 
           .total-display {
@@ -603,6 +612,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
           .signature-line {
             border-bottom: 1.5pt solid #000 !important;
             min-width: 60mm !important;
+            text-align: right !important;
           }
           
           /* الحفاظ على الألوان في PDF */
