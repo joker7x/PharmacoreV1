@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check } from 'lucide-react';
+import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check, Download } from 'lucide-react';
 import { Drug, InvoiceItem } from '../types';
 import { searchDrugs, lookupByBarcode, saveInvoice } from '../services/supabase.ts';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -138,9 +138,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
   const handlePrint = () => {
     if (items.length === 0) return;
     setIsFinalized(true);
+    // ننتظر قليلاً للتأكد من تحديث الواجهة قبل طلب الطباعة
     setTimeout(() => {
       window.print();
-    }, 250);
+    }, 500);
   };
 
   const handleShare = async () => {
@@ -162,7 +163,6 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
       return;
     }
 
-    // Deep link bot URL to the specified bot: i23Bot
     const botLink = `https://t.me/i23Bot?start=inv_${invoiceId}`;
     const itemsSummary = items.map(i => `• ${i.name}: ${i.quantity} x ${i.unitPrice.toFixed(2)}`).join('\n');
     const shareText = `📄 فاتورة تقديرية - ${pharmacyName}\n\n${itemsSummary}\n\n💰 الإجمالي: ${totalAmount.toFixed(2)} ج.م\n\n✨ تم الإنشاء عبر Pharma Core\n🔗 اضغط هنا لعرض الفاتورة كاملة داخل التطبيق:\n${botLink}`;
@@ -359,17 +359,17 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
       </AnimatePresence>
 
       {/* INVOICE CONTENT */}
-      <div className={`max-w-4xl mx-auto print:max-w-none print:m-0 ${isFinalized ? 'mt-24' : ''}`}>
+      <div id="print-area" className={`max-w-4xl mx-auto print:max-w-none print:m-0 ${isFinalized ? 'mt-24' : ''}`}>
         <div className="bg-white dark:bg-zinc-900 print:bg-white print:text-black rounded-[40px] print:rounded-none p-8 sm:p-16 shadow-2xl print:shadow-none border border-slate-100 dark:border-white/10 invoice-document relative">
           
           <div className="flex flex-col items-center mb-12 text-center border-b-2 border-slate-900 print:border-black pb-8">
-             <h1 className="text-3xl font-black text-slate-900 print:text-black mb-1 pharmacy-title-main">{pharmacyName}</h1>
+             <h1 className="text-3xl font-black text-slate-900 print:text-black mb-1 pharmacy-title-main" dir="rtl">{pharmacyName}</h1>
              <div className="text-[10px] font-black text-blue-600 print:text-black uppercase tracking-[0.3em] mb-6">Estimative Pharmacy Invoice</div>
              
              <div className="flex justify-between w-full text-[10px] font-bold text-slate-500 print:text-black mt-2">
                 <div className="text-right flex flex-col items-start">
-                   <span>التاريخ: {currentTime.toLocaleDateString('ar-EG')}</span>
-                   <span>رقم الفاتورة: {sharedInvoice ? sharedInvoice.id : `#${Date.now().toString().slice(-6)}`}</span>
+                   <span dir="rtl">التاريخ: {currentTime.toLocaleDateString('ar-EG')}</span>
+                   <span dir="rtl">رقم الفاتورة: {sharedInvoice ? sharedInvoice.id : `#${Date.now().toString().slice(-6)}`}</span>
                 </div>
                 <div className="text-left flex flex-col items-end">
                    <span>نظام Pharma Core Cloud</span>
@@ -385,7 +385,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                 <p className="font-bold text-slate-300 dark:text-zinc-700 uppercase tracking-widest">الفاتورة فارغة</p>
               </div>
             ) : (
-              <table className="w-full border-collapse invoice-table">
+              <table className="w-full border-collapse invoice-table" dir="rtl">
                 <thead>
                   <tr className="border-b-2 border-slate-900 print:border-black text-[11px] font-black uppercase text-slate-900 print:text-black">
                     <th className="pb-4 text-right pr-2">الصنف / Item Description</th>
@@ -398,8 +398,8 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                   {items.map(item => (
                     <tr key={item.id} className="invoice-row group">
                       <td className="py-6 pr-2">
-                        <div className="text-[14px] font-black text-slate-900 print:text-black leading-tight mb-1">{item.name}</div>
-                        {item.name_ar && <div className="text-[11px] font-bold text-slate-500 print:text-slate-600 arabic-text">{item.name_ar}</div>}
+                        <div className="text-[14px] font-black text-slate-900 print:text-black leading-tight mb-1" dir="rtl">{item.name}</div>
+                        {item.name_ar && <div className="text-[11px] font-bold text-slate-500 print:text-slate-600 arabic-text" dir="rtl">{item.name_ar}</div>}
                         {!isFinalized && !sharedInvoice && (
                           <button onClick={() => removeItem(item.id)} className="print:hidden text-rose-500 text-[10px] font-bold flex items-center gap-1 mt-2 hover:underline">
                             <Trash2 size={12} /> حذف
@@ -456,9 +456,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
                 </div>
              </div>
 
-             <div className="flex flex-col sm:flex-row gap-12 sm:gap-16 mb-12">
+             <div className="flex flex-col sm:flex-row gap-12 sm:gap-16 mb-12" dir="rtl">
                 <div className="flex-1 border-b-2 border-slate-900 print:border-black pb-3 signature-line">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Authorized Signature / توقيع المسؤول</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2" dir="rtl">Authorized Signature / توقيع المسؤول</span>
                 </div>
                 <div className="flex-1 text-left flex flex-col justify-end text-[8px] font-bold text-slate-500 uppercase leading-relaxed tracking-wider disclaimer">
                    * This document is an estimative guidance for reference only.<br/>
@@ -492,25 +492,130 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
       </div>
 
       <style>{`
+        /* 
+           تحسينات الطباعة لضمان ظهور النصوص العربية بشكل صحيح (متصل وواضح) 
+           وحل مشكلة الحروف غير المفهومة في ملفات PDF الناتجة عن الطباعة
+        */
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm; /* تقليل الهوامش لزيادة مساحة المحتوى */
+          }
+
+          html, body {
+            background: #fff !important;
+            color: #000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm; /* تثبيت عرض A4 */
+            height: auto !important;
+            direction: rtl !important;
+            text-align: right !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Force Arabic Font Embedding fallback for PDF Drivers */
+          * {
+            font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Arial', sans-serif !important;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            font-feature-settings: "kern" 1, "liga" 1;
+            direction: rtl !important;
+          }
+
+          .invoice-document {
+            display: block !important;
+            border: none !important;
+            padding: 10mm !important; /* هامش داخلي للورقة */
+            margin: 0 auto !important;
+            box-shadow: none !important;
+            width: 100% !important;
+            background: #fff !important;
+            color: #000 !important;
+            min-height: 297mm; /* ضمان ارتفاع A4 */
+          }
+
+          /* إخفاء عناصر التحكم في التطبيق أثناء الطباعة */
+          .print\\:hidden, 
+          #root > div > div:last-child, 
+          nav, 
+          footer, 
+          button, 
+          input, 
+          .lucide,
+          .absolute.top-4.left-1\/2 { 
+            display: none !important; 
+          }
+
+          .pharmacy-title-main {
+            font-size: 28pt !important;
+            font-weight: 900 !important;
+            color: #000 !important;
+            margin-bottom: 5mm !important;
+          }
+
+          .invoice-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 10mm !important;
+          }
+
+          .invoice-table th {
+            border-bottom: 2pt solid #000 !important;
+            padding: 3mm !important;
+            font-weight: 900 !important;
+            font-size: 11pt !important;
+            background-color: #f9f9f9 !important;
+            color: #000 !important;
+          }
+
+          .invoice-row td {
+            border-bottom: 0.5pt solid #eee !important;
+            padding: 4mm 2mm !important;
+            vertical-align: middle !important;
+            color: #000 !important;
+          }
+
+          .arabic-text {
+            font-size: 10pt !important;
+            font-weight: 700 !important;
+            color: #444 !important;
+          }
+
+          .total-display {
+            text-align: left !important;
+            direction: ltr !important;
+            padding: 5mm !important;
+          }
+
+          .total-display span {
+             color: #000 !important;
+          }
+
+          .footer-area {
+            margin-top: auto !important;
+            border-top: 2pt solid #000 !important;
+            padding-top: 5mm !important;
+          }
+
+          .signature-line {
+            border-bottom: 1.5pt solid #000 !important;
+            min-width: 60mm !important;
+          }
+          
+          /* الحفاظ على الألوان في PDF */
+          .text-blue-600 { color: #2563eb !important; }
+          .bg-slate-900 { background-color: #000 !important; color: #fff !important; }
+        }
+
+        .finalized-view { position: relative; z-index: 10; }
+        .invoice-table { table-layout: auto; width: 100%; }
+        
         @media (max-width: 640px) {
            .finalized-view { padding-bottom: 50vh !important; }
         }
-        @media print {
-          @page { size: A4 portrait; margin: 15mm; }
-          html, body { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; width: 100% !important; direction: rtl !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .invoice-document { display: block !important; border: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; background: #fff !important; color: #000 !important; }
-          .print\\:hidden, #root > div > div:last-child, nav, footer, button, input, .lucide { display: none !important; }
-          .invoice-document, .invoice-document *, .arabic-text { font-family: 'Cairo', 'Arial', sans-serif !important; color: #000 !important; direction: rtl !important; unicode-bidi: plaintext !important; }
-          .invoice-table { width: 100% !important; border-collapse: collapse !important; }
-          .invoice-table th { border-bottom: 2px solid #000 !important; text-align: right !important; padding-bottom: 10px !important; }
-          .invoice-row td { border-bottom: 1px solid #eee !important; padding: 15px 0 !important; }
-          .total-display { text-align: left !important; direction: ltr !important; min-width: 150px; }
-          .total-display * { text-align: left !important; direction: ltr !important; }
-          .signature-line { text-align: right !important; direction: rtl !important; }
-          .disclaimer { text-align: left !important; direction: ltr !important; }
-        }
-        .invoice-table { table-layout: auto; }
-        .finalized-view { position: relative; z-index: 10; }
       `}</style>
     </div>
   );
