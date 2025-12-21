@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X } from 'lucide-react';
+import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X, Lock, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SettingsViewProps {
@@ -9,6 +9,8 @@ interface SettingsViewProps {
   toggleDarkMode: () => void;
   onClearFavorites: () => void;
   onBack: () => void;
+  isAdmin?: boolean;
+  onOpenAdmin: () => void;
 }
 
 const SettingSection = ({ title, children }: { title: string, children?: React.ReactNode }) => (
@@ -55,12 +57,11 @@ const PolicyModal = ({ title, content, onClose }: { title: string, content: stri
   </motion.div>
 );
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack, isAdmin, onOpenAdmin }) => {
   const [modal, setModal] = useState<{ title: string, content: string } | null>(null);
 
   const openSupport = () => {
-    const tgLink = "https://t.me/your_support_username"; // استبدلها بيوزرك
-    window.open(tgLink, "_blank");
+    window.open("https://t.me/your_support_username", "_blank");
   };
 
   return (
@@ -71,9 +72,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
             </div>
             <div>
                 <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Pharma Core</h1>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">مركز التحكم والتواصل</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">الإعدادات والتحكم</p>
             </div>
         </div>
+
+        {isAdmin && (
+          <SettingSection title="الإدارة الفنية">
+             <SettingItem icon={ShieldAlert} label="لوحة تحكم النظام" color="blue" action={onOpenAdmin} isLast />
+          </SettingSection>
+        )}
 
         {user && (
           <div className="mb-8 p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[40px] text-white shadow-2xl shadow-blue-500/30 relative overflow-hidden">
@@ -111,20 +118,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
 
         <SettingSection title="الدعم والتواصل">
             <SettingItem icon={Headphones} label="الدعم الفني المباشر" color="emerald" action={openSupport} />
-            <SettingItem icon={MessageSquare} label="أرسل اقتراح أو شكوى" color="indigo" action={openSupport} />
             <SettingItem icon={Smartphone} label="قناة التحديثات الرسمية" color="rose" isLast action={() => window.open("https://t.me/your_channel", "_blank")} />
         </SettingSection>
 
         <SettingSection title="القانون والسياسات">
-            <SettingItem icon={ShieldCheck} label="سياسة الخصوصية" color="blue" action={() => setModal({ title: "سياسة الخصوصية", content: "نحن في Pharma Core نلتزم بحماية بياناتك الشخصية.\nلا يتم مشاركة بيانات هويتك في تليجرام مع أي أطراف ثالثة.\nيتم تخزين بيانات الكاش محلياً على جهازك لسرعة الوصول.\nاستخدامك للتطبيق يعني موافقتك على جمع إحصائيات الاستخدام لتحسين الخدمة." })} />
-            <SettingItem icon={ScrollText} label="اتفاقية الاستخدام" color="amber" action={() => setModal({ title: "اتفاقية الاستخدام", content: "تطبيق Pharma Core هو أداة استرشادية لأسعار الدواء.\nالأسعار المعروضة هي الأسعار الرسمية المعلنة من الجهات المختصة.\nقد يحدث تأخير طفيف في تحديث البيانات بناءً على سرعة الاتصال.\nالإدارة غير مسؤولة عن أي قرارات شرائية تتم بناءً على البيانات دون الرجوع للصيدلي." })} />
+            <SettingItem icon={ShieldCheck} label="سياسة الخصوصية" color="blue" action={() => setModal({ title: "سياسة الخصوصية", content: "بياناتك مشفرة ومحمية بالكامل." })} />
             <SettingItem icon={Info} label="إصدار التطبيق" valueLabel="v3.1.2 Premium" color="slate" isLast />
         </SettingSection>
-
-        <div className="text-center mb-6">
-            <p className="text-slate-300 dark:text-zinc-700 text-[10px] font-black tracking-[0.3em] uppercase mb-1">Pharma Core Engine</p>
-            <p className="text-slate-300 dark:text-zinc-700 text-[10px] font-bold">Encrypted Connection Protected</p>
-        </div>
 
         <AnimatePresence>
           {modal && <PolicyModal title={modal.title} content={modal.content} onClose={() => setModal(null)} />}

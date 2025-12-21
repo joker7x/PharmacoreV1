@@ -1,5 +1,5 @@
 
-import { BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY } from '../constants';
+import { BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY, BOT_USERNAME } from '../constants';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -21,7 +21,6 @@ export default async function handler(req: any, res: any) {
       const invoiceId = parts[1];
       const token = parts[2];
 
-      // التحقق من صحة التوكن من Supabase مباشرة
       const checkRes = await fetch(
         `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&is_used=eq.false&select=*`,
         {
@@ -33,21 +32,24 @@ export default async function handler(req: any, res: any) {
       );
       
       const shares = await checkRes.json();
-      const isValid = shares.length > 0 && new Date(shares[0].expires_at) > new Date();
+      const isValid = shares && shares.length > 0 && new Date(shares[0].expires_at) > new Date();
 
       if (isValid) {
-        // إرسال رد تليجرام مع زر فتح الفاتورة
-        const responseText = `📄 *تم العثور على الفاتورة التقديرية*\n\nالمعرف: \`${invoiceId}\`\nهذا الرابط صالح للاستخدام مرة واحدة فقط لضمان الخصوصية.\n\nاضغط على الزر أدناه لفتحها داخل نظام Pharma Core.`;
+        const responseText = `📄 *تم العثور على الفاتورة التقديرية*\n\nالمعرف: \`${invoiceId}\`\nهذا الرابط صالح للاستخدام مرة واحدة فقط.\n\nاضغط على الزر أدناه لفتحها داخل التطبيق:`;
         
         await sendTelegramMessage(chatId, responseText, [
-          [{ text: "👁️ فتح الفاتورة الآن", url: `https://t.me/i23Bot/app?startapp=inv_${invoiceId}_${token}` }]
+          [{ 
+            text: "👁️ فتح الفاتورة الآن", 
+            // الرابط الصحيح لفتح الـ WebApp مع باراميتر
+            url: `https://t.me/${BOT_USERNAME}/app?startapp=inv_${invoiceId}_${token}` 
+          }]
         ]);
       } else {
         await sendTelegramMessage(chatId, "❌ نعتذر، هذا الرابط غير صالح أو انتهت صلاحيته الأمنية.");
       }
     }
   } else if (text === '/start') {
-    await sendTelegramMessage(chatId, "مرحباً بك في بوت *Pharma Core* ⚡\n\nهذا البوت مخصص لاستقبال ومشاركة الفواتير الطبية بشكل آمن. يمكنك توليد الفواتير من داخل التطبيق ومشاركتها هنا.");
+    await sendTelegramMessage(chatId, "مرحباً بك في بوت *Pharma Core* ⚡\n\nيمكنك الآن استلام الفواتير ومراجعتها بشكل آمن من خلالي.");
   }
 
   return res.status(200).send('ok');
@@ -63,7 +65,7 @@ async function sendTelegramMessage(chatId: number, text: string, keyboard?: any[
     body.reply_markup = { inline_keyboard: keyboard };
   }
 
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+  return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)

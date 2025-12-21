@@ -5,7 +5,7 @@ import {
   ShieldCheck, ArrowRight, Activity, Cpu, Database, Zap, Bell, Send, Users, 
   ShieldOff, Shield, Loader2, Sparkles, Globe, Construction, Clock, Info, 
   AlertCircle, UserCheck, UserMinus, Star, Search, Filter, Smartphone, Calendar,
-  Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot
+  Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot, Link as LinkIcon
 } from 'lucide-react';
 import { AppNotification } from '../types';
 import { getAllUsers, updateUserPermissions } from '../services/supabase.ts';
@@ -34,6 +34,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [botStatus, setBotStatus] = useState<any>(null);
+  const [isSettingWebhook, setIsSettingWebhook] = useState(false);
   
   const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
@@ -53,6 +54,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
       const data = await res.json();
       setBotStatus(data.result);
     } catch (e) { setBotStatus({ error: true }); }
+  };
+
+  const setupWebhook = async () => {
+    const currentUrl = window.location.origin;
+    setIsSettingWebhook(true);
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${currentUrl}/api/telegram`);
+      const data = await res.json();
+      if (data.ok) alert("✅ تم ربط البوت بنجاح بعناون:\n" + currentUrl);
+      else alert("❌ فشل الربط: " + data.description);
+    } catch (e) {
+      alert("❌ خطأ في الاتصال بتليجرام");
+    } finally {
+      setIsSettingWebhook(false);
+    }
   };
 
   useEffect(() => {
@@ -140,7 +156,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
                   <>
                     <h3 className="text-xl font-black mb-1">@{botStatus.username}</h3>
                     <p className="text-zinc-500 text-sm mb-6">{botStatus.first_name}</p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
                         <div className="text-[10px] font-black text-zinc-500 uppercase mb-1">Status</div>
                         <div className="text-emerald-500 font-black">Connected</div>
@@ -150,6 +166,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
                         <div className="text-blue-500 font-black">Vercel API</div>
                       </div>
                     </div>
+                    <button 
+                      onClick={setupWebhook} 
+                      disabled={isSettingWebhook}
+                      className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSettingWebhook ? <Loader2 className="animate-spin" size={18} /> : <LinkIcon size={18} />}
+                      تفعيل Webhook البوت
+                    </button>
                   </>
                 ) : <Loader2 className="animate-spin mx-auto text-zinc-600" size={32} />}
               </div>
@@ -157,9 +181,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
               <div className="bg-amber-500/10 p-6 rounded-[32px] border border-amber-500/20 flex gap-4">
                 <AlertCircle className="text-amber-500 shrink-0" size={24} />
                 <div>
-                  <h4 className="font-black text-amber-500 text-sm mb-1">تنبيه المطور</h4>
+                  <h4 className="font-black text-amber-500 text-sm mb-1">تعليمات التشغيل</h4>
                   <p className="text-[11px] text-amber-500/80 leading-relaxed font-bold">
-                    يتم التحكم في البوت بالكامل عبر Vercel Serverless Functions. أي تغيير في منطق البوت يجب أن يتم في ملف `api/telegram.ts`.
+                    زر "تفعيل Webhook" سيقوم بربط البوت برابط الموقع الحالي فوراً لتلقي طلبات الفواتير.
                   </p>
                 </div>
               </div>

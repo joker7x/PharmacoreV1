@@ -34,7 +34,6 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
-  const [previewMaintenance, setPreviewMaintenance] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -58,14 +57,18 @@ const App: React.FC = () => {
     if (tg) {
       tg.ready();
       tg.expand();
+      
       const user = tg.initDataUnsafe?.user;
+      // اكتشاف start_param من تليجرام عند الفتح من رابط عميق
       const startParam = tg.initDataUnsafe?.start_param;
 
       if (user) {
         setTgUser(user);
         syncTelegramUser(user).then((dbUser: any) => {
           if (dbUser?.id === MASTER_ID || dbUser?.is_admin) {
-            setIsAdmin(true); setIsAuthorized(true); setItemsLimit(100000); 
+            setIsAdmin(true); 
+            setIsAuthorized(true); 
+            setItemsLimit(100000); 
           } else {
             if (dbUser?.device_info?.is_blocked) setIsBlocked(true);
             setItemsLimit(dbUser?.device_info?.items_limit || 100);
@@ -73,13 +76,11 @@ const App: React.FC = () => {
         });
       }
 
-      // معالجة الروابط العميقة الآمنة (inv_ID_TOKEN)
       if (startParam && startParam.startsWith('inv_')) {
         const parts = startParam.split('_');
         if (parts.length >= 3) {
           const invId = parts[1];
           const token = parts[2];
-
           setLoading(true);
           validateShareToken(invId, token).then(isValid => {
             if (isValid) {
@@ -133,22 +134,25 @@ const App: React.FC = () => {
   };
 
   if (isBlocked) return <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-8 text-center" dir="rtl"><h1 className="text-3xl font-black text-white mb-4">الدخول محظور</h1></div>;
-
   if (configLoading) return <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>;
 
   const renderView = () => {
     switch (currentView) {
       case 'admin': return <PageTransition><AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={c => { setConfig(c); updateGlobalConfig(c); }} currentUser={tgUser}/></PageTransition>;
-      case 'settings': return <PageTransition><SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} /></PageTransition>;
+      case 'settings': return <PageTransition><SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => isAdmin ? setCurrentView('admin') : setShowLogin(true)} /></PageTransition>;
       case 'stats': return <PageTransition><StatsView drugs={drugs} onBack={() => setCurrentView('home')} /></PageTransition>;
       case 'invoice': return <PageTransition><InvoiceBuilder onBack={() => { setSharedInvoice(null); setCurrentView('home'); }} sharedInvoice={sharedInvoice} /></PageTransition>;
       default: return (
         <PageTransition>
           <div className="w-full max-w-lg mx-auto px-6 pt-10">
-            <div className="flex items-center justify-between mb-8"><button onClick={() => setShowNotifications(true)} className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 border relative"><Bell size={20} /></button>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Pharma <span className="text-blue-600 font-medium">Core</span></h1>
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white"><Sparkles size={20} /></div></div>
-            <input type="text" placeholder="ابحث عن دواء..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white dark:bg-slate-900 border rounded-3xl px-6 py-4.5 text-right outline-none mb-6" />
+            <div className="flex items-center justify-between mb-8">
+              <button onClick={() => setShowNotifications(true)} className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 border relative shadow-sm">
+                <Bell size={20} />
+              </button>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white">Pharma <span className="text-blue-600 font-medium">Core</span></h1>
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20"><Sparkles size={20} /></div>
+            </div>
+            <input type="text" placeholder="ابحث عن دواء..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-3xl px-6 py-4.5 text-right outline-none mb-6 shadow-sm" />
             <TabFilter current={mode} onChange={setMode} />
             <div className="mt-8 space-y-4">{drugs.map((drug, idx) => (<DrugCard key={idx} drug={drug} index={idx} isFavorite={false} onToggleFavorite={() => {}} onOpenInfo={(d) => setSelectedDrug(d)} />))}</div>
           </div>
