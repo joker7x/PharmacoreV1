@@ -1,5 +1,6 @@
 
-import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE } from '../constants';
+import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE, BOT_USERNAME } from '../constants';
+import { Drug } from '../types';
 
 const headers = {
   'apikey': SUPABASE_KEY,
@@ -7,36 +8,28 @@ const headers = {
   'Content-Type': 'application/json'
 };
 
-const MASTER_ADMIN_ID = 1541678512;
-
-export const searchDrugs = async (query: string): Promise<any[]> => {
-  if (!query || query.length < 2) return [];
+export const searchDrugs = async (query: string): Promise<Drug[]> => {
   try {
-    const isEnglish = /^[a-zA-Z]/.test(query);
-    const filterField = isEnglish ? 'name_en' : 'name_ar';
+    const encodedQuery = encodeURIComponent(`*${query}*`);
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?${filterField}=ilike.*${encodeURIComponent(query)}*&select=*&limit=10`, 
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?or=(name_en.ilike.${encodedQuery},name_ar.ilike.${encodedQuery})&limit=20`,
       { headers }
     );
     if (!response.ok) return [];
     return await response.json();
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 };
 
-export const lookupByBarcode = async (barcode: string): Promise<any | null> => {
+export const lookupByBarcode = async (barcode: string): Promise<Drug | null> => {
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?drug_no=eq.${barcode}&select=*`, 
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?drug_no=eq.${barcode}&select=*`,
       { headers }
     );
     if (!response.ok) return null;
     const data = await response.json();
     return data[0] || null;
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return null; }
 };
 
 export const saveInvoice = async (invoiceData: any): Promise<string | null> => {
@@ -52,15 +45,56 @@ export const saveInvoice = async (invoiceData: any): Promise<string | null> => {
       })
     });
     if (!response.ok) {
-        // Fallback for local testing or missing table
-        return id; 
+        const err = await response.json();
+        console.error("Supabase Save Error:", err);
+        return null;
     }
     const data = await response.json();
     return data[0]?.id || id;
-  } catch (e) {
-    console.error("Save invoice failed", e);
-    return null;
-  }
+  } catch (e) { return null; }
+};
+
+export const createSecureShareLink = async (invoiceId: string): Promise<string | null> => {
+  try {
+    const token = Math.random().toString(36).substring(2, 15);
+    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        invoice_id: invoiceId,
+        token: token,
+        expires_at: expiresAt
+      })
+    });
+
+    if (!response.ok) return null;
+    return `https://t.me/${BOT_USERNAME}?start=inv_${invoiceId}_${token}`;
+  } catch (e) { return null; }
+};
+
+export const validateShareToken = async (invoiceId: string, token: string): Promise<boolean> => {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&is_used=eq.false&select=*`,
+      { headers }
+    );
+    const data = await response.json();
+    if (data.length > 0) {
+      const share = data[0];
+      if (new Date(share.expires_at) > new Date()) {
+        // تحديث التوكن ليكون مستخدماً (اختياري لزيادة الأمان)
+        await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares?id=eq.${share.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ is_used: true })
+        });
+        return true;
+      }
+    }
+    return false;
+  } catch (e) { return false; }
 };
 
 export const getInvoice = async (id: string): Promise<any | null> => {
@@ -69,16 +103,12 @@ export const getInvoice = async (id: string): Promise<any | null> => {
     if (!response.ok) return null;
     const data = await response.json();
     return data[0] || null;
-  } catch (e) { 
-    console.error("Get invoice failed", e);
-    return null; 
-  }
+  } catch (e) { return null; }
 };
 
 export const getGlobalConfig = async (): Promise<any> => {
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config&select=value`, { headers });
-    if (!response.ok) return null;
     const data = await response.json();
     return data[0]?.value || null;
   } catch (e) { return null; }
@@ -88,7 +118,7 @@ export const updateGlobalConfig = async (config: any): Promise<void> => {
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/app_settings?key=eq.global_config`, {
       method: 'PATCH',
-      headers: { ...headers, 'Prefer': 'return=minimal' },
+      headers: { ...headers },
       body: JSON.stringify({ value: config })
     });
   } catch (e) {}
@@ -101,19 +131,18 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
     const existingUsers = await checkRes.json();
     const existingUser = existingUsers[0];
 
-    const userData: any = {
+    const userData = {
       id: user.id,
       first_name: user.first_name || "",
       last_name: user.last_name || "",
       username: user.username || "",
-      language_code: user.language_code || "ar",
       last_seen: new Date().toISOString()
     };
 
     if (existingUser) {
       await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
         method: 'PATCH',
-        headers: { ...headers, 'Prefer': 'return=minimal' },
+        headers,
         body: JSON.stringify(userData)
       });
       return { ...existingUser, ...userData };
@@ -121,24 +150,17 @@ export const syncTelegramUser = async (user: any): Promise<any> => {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({
-          ...userData,
-          is_admin: Number(user.id) === MASTER_ADMIN_ID,
-          device_info: { items_limit: 100 }
-        })
+        body: JSON.stringify({ ...userData, device_info: { items_limit: 100 } })
       });
       const created = await response.json();
       return created[0];
     }
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return null; }
 };
 
 export const getAllUsers = async (): Promise<any[]> => {
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/app_users?select=*&order=last_seen.desc`, { headers });
-    if (!response.ok) return [];
     return await response.json();
   } catch (e) { return []; }
 };
@@ -149,14 +171,12 @@ export const updateUserPermissions = async (userId: number, updates: any): Promi
     const users = await res.json();
     const user = users[0];
     if (!user) return;
-
-    const newDeviceInfo = { ...user.device_info, ...updates };
-    const body: any = { device_info: newDeviceInfo };
-    if ('is_admin' in updates) body.is_admin = updates.is_admin;
-
+    const body = { device_info: { ...user.device_info, ...updates } };
+    if ('is_admin' in updates) (body as any).is_admin = updates.is_admin;
+    if ('is_premium' in updates) (body as any).is_premium = updates.is_premium;
     await fetch(`${SUPABASE_URL}/rest/v1/app_users?id=eq.${userId}`, {
       method: 'PATCH',
-      headers: { ...headers, 'Prefer': 'return=minimal' },
+      headers,
       body: JSON.stringify(body)
     });
   } catch (e) {}
