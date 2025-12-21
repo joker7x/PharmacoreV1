@@ -93,16 +93,23 @@ const App: React.FC = () => {
         }).catch(err => console.error("Sync user failed", err));
       }
 
-      // تحسين معالجة روابط الفواتير العميقة
+      // معالجة الروابط العميقة (Deep Links)
       if (startParam) {
+        let invId = '';
         if (startParam.startsWith('inv_')) {
-          const invId = startParam.substring(4); // استخراج ID الفاتورة بعد "inv_"
+          invId = startParam.replace('inv_', '');
+        } else {
+          invId = startParam;
+        }
+
+        if (invId) {
+          setLoading(true);
           getInvoice(invId).then(inv => {
             if (inv) {
               setSharedInvoice(inv);
               setCurrentView('invoice');
             }
-          }).catch(e => console.error("Invoice Link Error", e));
+          }).finally(() => setLoading(false));
         }
       }
     }
@@ -273,13 +280,6 @@ const App: React.FC = () => {
                         <motion.button onClick={() => loadData()} disabled={loading} className="w-full py-5 rounded-3xl bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold text-sm shadow-sm border border-slate-200 dark:border-white/10 flex items-center justify-center gap-2 active:scale-95 transition-all">
                           {loading ? <RefreshCw className="animate-spin" size={18} /> : <span>عرض المزيد من الأصناف</span>}
                         </motion.button>
-                      )}
-                      {!hasMore && drugs.length >= itemsLimit && itemsLimit < 10000 && (
-                        <div className="p-8 text-center bg-blue-500/5 rounded-[40px] border border-dashed border-blue-500/20">
-                          <Lock size={32} className="mx-auto text-blue-500/40 mb-3" />
-                          <p className="text-[11px] font-black text-blue-500/60 uppercase tracking-widest">وصلت للحد المسموح ({itemsLimit} صنف)</p>
-                          <p className="text-[10px] text-zinc-500 font-bold mt-1">يرجى التواصل مع الإدارة لرفع القيود عن حسابك</p>
-                        </div>
                       )}
                     </>
                   ) : loading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-32 rounded-[32px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 loading-shimmer" />) : (
