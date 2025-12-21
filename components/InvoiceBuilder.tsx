@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check, Download } from 'lucide-react';
+import { Search, Plus, Trash2, Printer, Calculator, Edit3, Package, FileText, Scan, X, CheckCircle2, ChevronRight, Share2, Loader2, Copy, Check } from 'lucide-react';
 import { Drug, InvoiceItem } from '../types';
 import { searchDrugs, lookupByBarcode, saveInvoice } from '../services/supabase.ts';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -139,10 +138,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
   const handlePrint = () => {
     if (items.length === 0) return;
     setIsFinalized(true);
-    // ننتظر قليلاً للتأكد من تحديث الواجهة قبل طلب الطباعة لضمان التقاط التصميم الجديد
     setTimeout(() => {
       window.print();
-    }, 700);
+    }, 800);
   };
 
   const handleShare = async () => {
@@ -166,7 +164,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
 
     const botLink = `https://t.me/i23Bot?start=inv_${invoiceId}`;
     const itemsSummary = items.map(i => `• ${i.name}: ${i.quantity} x ${i.unitPrice.toFixed(2)}`).join('\n');
-    const shareText = `📄 فاتورة تقديرية - ${pharmacyName}\n\n${itemsSummary}\n\n💰 الإجمالي: ${totalAmount.toFixed(2)} ج.م\n\n✨ تم الإنشاء عبر Pharma Core\n🔗 اضغط هنا لعرض الفاتورة كاملة داخل التطبيق:\n${botLink}`;
+    const shareText = `📄 فاتورة تقديرية - ${pharmacyName}\n\n${itemsSummary}\n\n💰 الإجمالي: ${totalAmount.toFixed(2)} ج.م\n\n✨ تم الإنشاء عبر Pharma Core\n🔗 رابط الفاتورة:\n${botLink}`;
 
     if (navigator.share) {
       try {
@@ -176,7 +174,6 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
           url: botLink
         });
       } catch (err) {
-        console.error("Share failed:", err);
         copyToClipboard(shareText);
       }
     } else {
@@ -231,7 +228,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
             </button>
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-white">منشئ الفواتير</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A4 Mobile Friendly Creator</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A4 Professional Creator</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -493,139 +490,93 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack, sharedIn
       </div>
 
       <style>{`
-        /* 
-           تحسينات الطباعة لضمان ظهور النصوص العربية بشكل صحيح (متصل وواضح) 
-           وحل مشكلة الحروف غير المفهومة في ملفات PDF الناتجة عن الطباعة
-        */
+        /* CSS مخصص للطباعة يضمن حل مشاكل اللغة العربية في الـ PDF */
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm; 
+            margin: 15mm;
           }
 
-          html, body {
-            background: #fff !important;
-            color: #000 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 210mm; 
-            height: auto !important;
-            direction: rtl !important;
-            text-align: right !important;
+          /* الخطوط: نستخدم خطوط النظام التي تدعم العربية بشكل أصلي في PDF */
+          * {
+            font-family: 'Times New Roman', 'Arial', serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Arial', sans-serif !important;
+            color: #000 !important;
           }
 
-          /* Force Arabic Font Embedding fallback for PDF Drivers */
-          * {
-            font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Arial', sans-serif !important;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-            font-feature-settings: "kern" 1, "liga" 1;
+          /* إصلاح مشكلة الحروف المقطعة: الحفاظ على اتجاه النص لكل عنصر */
+          [dir="rtl"], .arabic-text, h1, span, div, td, th {
             direction: rtl !important;
-            unicode-bidi: plaintext !important;
+            unicode-bidi: embed !important;
+            text-align: right !important;
+            white-space: nowrap; /* منع قطع الكلمات الطويلة */
+          }
+
+          body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100%;
           }
 
           .invoice-document {
-            display: block !important;
-            border: none !important;
-            padding: 10mm !important; 
-            margin: 0 auto !important;
             box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
             width: 100% !important;
-            background: #fff !important;
-            color: #000 !important;
-            min-height: 297mm; 
+            max-width: none !important;
           }
 
-          /* إخفاء عناصر التحكم في التطبيق أثناء الطباعة */
-          .print\\:hidden, 
-          #root > div > div:last-child, 
-          nav, 
-          footer, 
-          button, 
-          input, 
-          .lucide,
-          .absolute.top-4.left-1\/2 { 
-            display: none !important; 
+          .print\\:hidden, .fixed, button, input[type="text"], .lucide {
+            display: none !important;
           }
 
           .pharmacy-title-main {
-            font-size: 28pt !important;
-            font-weight: 900 !important;
-            color: #000 !important;
-            margin-bottom: 5mm !important;
-            direction: rtl !important;
+            font-size: 32pt !important;
+            font-weight: bold !important;
+            margin-bottom: 5pt !important;
+            text-align: center !important;
           }
 
           .invoice-table {
             width: 100% !important;
             border-collapse: collapse !important;
-            margin-top: 10mm !important;
-            direction: rtl !important;
+            margin: 20pt 0 !important;
           }
 
           .invoice-table th {
             border-bottom: 2pt solid #000 !important;
-            padding: 3mm !important;
-            font-weight: 900 !important;
-            font-size: 11pt !important;
-            background-color: #f9f9f9 !important;
-            color: #000 !important;
-            text-align: right !important;
+            padding: 10pt !important;
+            font-size: 12pt !important;
           }
 
           .invoice-row td {
-            border-bottom: 0.5pt solid #eee !important;
-            padding: 4mm 2mm !important;
-            vertical-align: middle !important;
-            color: #000 !important;
-            text-align: right !important;
-          }
-
-          .arabic-text {
-            font-size: 10pt !important;
-            font-weight: 700 !important;
-            color: #444 !important;
-            direction: rtl !important;
-            unicode-bidi: plaintext !important;
+            border-bottom: 1pt solid #ddd !important;
+            padding: 12pt 5pt !important;
+            font-size: 11pt !important;
           }
 
           .total-display {
             text-align: left !important;
             direction: ltr !important;
-            padding: 5mm !important;
-          }
-
-          .total-display span {
-             color: #000 !important;
+            float: left;
+            width: auto;
           }
 
           .footer-area {
-            margin-top: auto !important;
+            clear: both;
+            margin-top: 30pt !important;
             border-top: 2pt solid #000 !important;
-            padding-top: 5mm !important;
-          }
-
-          .signature-line {
-            border-bottom: 1.5pt solid #000 !important;
-            min-width: 60mm !important;
-            text-align: right !important;
           }
           
-          /* الحفاظ على الألوان في PDF */
-          .text-blue-600 { color: #2563eb !important; }
-          .bg-slate-900 { background-color: #000 !important; color: #fff !important; }
+          /* إجبار إظهار العناوين باللون الأسود */
+          h1, h2, h3, h4, b, strong {
+            color: black !important;
+          }
         }
 
         .finalized-view { position: relative; z-index: 10; }
-        .invoice-table { table-layout: auto; width: 100%; }
-        
-        @media (max-width: 640px) {
-           .finalized-view { padding-bottom: 50vh !important; }
-        }
       `}</style>
     </div>
   );
