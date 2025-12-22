@@ -5,7 +5,9 @@ import {
   ShieldCheck, ArrowRight, Activity, Cpu, Database, Zap, Bell, Send, Users, 
   ShieldOff, Shield, Loader2, Sparkles, Globe, Construction, Clock, Info, 
   AlertCircle, UserCheck, UserMinus, Star, Search, Filter, Smartphone, Calendar,
-  Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot, Link as LinkIcon
+  Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot, Link as LinkIcon, Settings as SettingsIcon,
+  // Added RefreshCw to fix the "Cannot find name 'RefreshCw'" error
+  RefreshCw
 } from 'lucide-react';
 import { AppNotification } from '../types';
 import { getAllUsers, updateUserPermissions } from '../services/supabase.ts';
@@ -29,7 +31,7 @@ interface AdminViewProps {
 const MASTER_ID = 1541678512;
 
 export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config, onUpdateConfig, currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'bot' | 'broadcast' | 'maintenance'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'bot' | 'broadcast' | 'maintenance' | 'features'>('dashboard');
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearch, setUserSearch] = useState('');
@@ -57,12 +59,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   };
 
   const setupWebhook = async () => {
-    // استخراج رابط الدومين الحالي ديناميكياً
     let currentUrl = window.location.origin;
-    
-    // إذا كان الرابط localhost (للتطوير)، يجب استخدام ngrok أو دومين حقيقي لتعمل تليجرام
     if (currentUrl.includes('localhost')) {
-        alert("⚠️ لا يمكن ربط Webhook برابط Localhost. تليجرام تتطلب رابط HTTPS حقيقي (مثلاً على Vercel).");
+        alert("⚠️ لا يمكن ربط Webhook برابط Localhost. تليجرام تتطلب رابط HTTPS حقيقي.");
         return;
     }
 
@@ -71,16 +70,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
       const webhookUrl = `${currentUrl}/api/telegram`;
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${webhookUrl}`);
       const data = await res.json();
-      if (data.ok) {
-        alert(`✅ تم الربط بنجاح!\n\nرابط الـ Webhook النشط حالياً:\n${webhookUrl}\n\nتأكد من وجود ملف api/telegram.ts في مشروعك على Vercel.`);
-      } else {
-        alert("❌ فشل الربط: " + data.description);
-      }
-    } catch (e) {
-      alert("❌ خطأ في الاتصال بخوادم تليجرام. تأكد من اتصال الإنترنت لديك.");
-    } finally {
-      setIsSettingWebhook(false);
-    }
+      if (data.ok) alert(`✅ تم الربط بنجاح!\n${webhookUrl}`);
+      else alert("❌ فشل الربط: " + data.description);
+    } catch (e) { alert("❌ خطأ في الاتصال."); } finally { setIsSettingWebhook(false); }
   };
 
   useEffect(() => {
@@ -96,7 +88,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
   const handleToggleBlock = async (userId: number, currentStatus: boolean) => {
     if (userId === MASTER_ID) return;
-    if (confirm(currentStatus ? "هل تود فك الحظر عن هذا المستخدم؟" : "هل تود حظر هذا المستخدم تماماً؟")) {
+    if (confirm(currentStatus ? "هل تود فك الحظر؟" : "هل تود الحظر؟")) {
       await updateUserPermissions(userId, { is_blocked: !currentStatus });
       fetchUsers();
     }
@@ -112,15 +104,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
     localStorage.setItem('dwa_notifications', JSON.stringify([newNotif, ...JSON.parse(existingStr)]));
     window.dispatchEvent(new Event('storage'));
     setNotifTitle(''); setNotifBody('');
-    alert('✅ تم بث الإشعار لجميع المستخدمين بنجاح.');
+    alert('✅ تم بث الإشعار بنجاح.');
   };
 
   const TabButton = ({ id, label, icon: Icon }: any) => (
-    <button onClick={() => setActiveTab(id)} className={`flex-1 py-4 rounded-[22px] flex flex-col items-center justify-center gap-1.5 text-[10px] font-black transition-all relative ${activeTab === id ? 'text-white' : 'text-zinc-500'}`}>
+    <button onClick={() => setActiveTab(id)} className={`flex-1 py-4 rounded-[22px] flex flex-col items-center justify-center gap-1.5 text-[9px] font-black transition-all relative ${activeTab === id ? 'text-white' : 'text-zinc-500'}`}>
       {activeTab === id && <motion.div layoutId="adminTab" className="absolute inset-0 bg-blue-600 rounded-[22px] shadow-lg" />}
       <Icon size={16} className="relative z-10" />
       <span className="relative z-10">{label}</span>
     </button>
+  );
+
+  const FeatureToggle = ({ label, description, icon: Icon, value, onToggle, color }: any) => (
+    <div className="bg-zinc-900/60 p-6 rounded-[32px] border border-white/5 flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className={`w-11 h-11 rounded-2xl bg-${color}-500/10 text-${color}-500 flex items-center justify-center`}><Icon size={20} /></div>
+        <div>
+          <h4 className="text-[13px] font-black text-white">{label}</h4>
+          <p className="text-[10px] text-zinc-500 font-bold">{description}</p>
+        </div>
+      </div>
+      <button onClick={() => onToggle(!value)} className={`w-14 h-7 rounded-full p-1 transition-all ${value ? 'bg-blue-600' : 'bg-zinc-800'}`}>
+        <motion.div animate={{ x: value ? -28 : 0 }} className="w-5 h-5 bg-white rounded-full" />
+      </button>
+    </div>
   );
 
   return (
@@ -134,8 +141,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
       </div>
 
       <div className="sticky top-0 z-50 bg-[#09090b]/80 backdrop-blur-md pb-4 pt-2">
-        <div className="flex bg-zinc-900/50 rounded-3xl p-1.5 border border-white/5">
+        <div className="flex bg-zinc-900/50 rounded-3xl p-1.5 border border-white/5 overflow-x-auto no-scrollbar">
           <TabButton id="dashboard" label="الحالة" icon={Activity} />
+          <TabButton id="features" label="المميزات" icon={SettingsIcon} />
           <TabButton id="users" label="الأعضاء" icon={Users} />
           <TabButton id="bot" label="البوت" icon={Bot} />
           <TabButton id="broadcast" label="البث" icon={Bell} />
@@ -158,46 +166,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
             </motion.div>
           )}
 
+          {activeTab === 'features' && (
+            <motion.div key="features" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+              <FeatureToggle label="تحليل الذكاء الاصطناعي" description="تفعيل توقعات Gemini للأصناف" icon={Sparkles} value={config.aiAnalysis} onToggle={(v:boolean) => onUpdateConfig({aiAnalysis:v})} color="indigo" />
+              <FeatureToggle label="فحص توفر السوق" description="ربط البيانات مع خوادم التوريد" icon={Globe} value={config.marketCheck} onToggle={(v:boolean) => onUpdateConfig({marketCheck:v})} color="emerald" />
+              <FeatureToggle label="التزامن اللحظي" description="تحديث الأسعار في الخلفية" icon={RefreshCw} value={config.liveSync} onToggle={(v:boolean) => onUpdateConfig({liveSync:v})} color="blue" />
+            </motion.div>
+          )}
+
           {activeTab === 'bot' && (
             <motion.div key="bot" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="bg-zinc-900/60 p-8 rounded-[40px] border border-white/5 text-center">
-                <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 border border-indigo-500/30 shadow-inner">
+                <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 border border-indigo-500/30">
                   <Bot size={40} />
                 </div>
                 {botStatus ? (
                   <>
                     <h3 className="text-xl font-black mb-1">@{botStatus.username}</h3>
                     <p className="text-zinc-500 text-sm mb-6 font-bold">{botStatus.first_name}</p>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
-                        <div className="text-[10px] font-black text-zinc-500 uppercase mb-1">Status</div>
-                        <div className="text-emerald-500 font-black">Connected</div>
-                      </div>
-                      <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
-                        <div className="text-[10px] font-black text-zinc-500 uppercase mb-1">Gateway</div>
-                        <div className="text-blue-500 font-black">Vercel API</div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={setupWebhook} 
-                      disabled={isSettingWebhook}
-                      className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-indigo-600/20"
-                    >
+                    <button onClick={setupWebhook} disabled={isSettingWebhook} className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
                       {isSettingWebhook ? <Loader2 className="animate-spin" size={18} /> : <LinkIcon size={18} />}
                       تفعيل Webhook البوت
                     </button>
                   </>
-                ) : <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-zinc-600 mb-4" size={32} /><p className="text-[10px] font-black text-zinc-600 uppercase">Checking Connection...</p></div>}
-              </div>
-
-              <div className="bg-amber-500/10 p-6 rounded-[32px] border border-amber-500/20 flex gap-4 shadow-inner">
-                <AlertCircle className="text-amber-500 shrink-0" size={24} />
-                <div>
-                  <h4 className="font-black text-amber-500 text-sm mb-1">تعليمات الربط البرمجي</h4>
-                  <p className="text-[11px] text-amber-500/80 leading-relaxed font-bold">
-                    زر "التفعيل" سيقوم بإعلام تليجرام بأن موقعك الحالي (على Vercel) هو المسؤول عن استقبال رسائل البوت. لا تضغط عليه إلا بعد التأكد من رفع الكود.
-                  </p>
-                </div>
+                ) : <Loader2 className="animate-spin mx-auto text-zinc-600" size={32} />}
               </div>
             </motion.div>
           )}
@@ -206,20 +198,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
             <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
               <div className="relative mb-6">
                  <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                 <input type="text" placeholder="بحث باسم المستخدم أو المعرف..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full bg-zinc-900/60 border border-white/10 rounded-[24px] py-4.5 pr-14 text-sm font-bold outline-none focus:border-blue-600 transition-colors" />
+                 <input type="text" placeholder="بحث باسم المستخدم أو المعرف..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full bg-zinc-900/60 border border-white/10 rounded-[24px] py-4.5 pr-14 text-sm font-bold outline-none" />
               </div>
               {loadingUsers ? <Loader2 className="animate-spin mx-auto text-blue-500 py-10" /> : users.filter(u => u.first_name?.includes(userSearch) || u.id?.toString().includes(userSearch)).map((u) => (
-                <div key={u.id} className="bg-zinc-900/40 border border-white/5 p-5 rounded-[32px] flex items-center justify-between hover:bg-zinc-900/60 transition-colors">
+                <div key={u.id} className="bg-zinc-900/40 border border-white/5 p-5 rounded-[32px] flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-lg font-black border border-white/5 shadow-inner">{u.first_name?.[0]}</div>
-                    <div>
-                      <div className="font-black text-sm flex items-center gap-2">{u.first_name} {u.id === MASTER_ID && <Star size={12} className="text-amber-500 fill-amber-500" />}</div>
-                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">ID: {u.id}</div>
-                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-lg font-black border border-white/5">{u.first_name?.[0]}</div>
+                    <div><div className="font-black text-sm flex items-center gap-2">{u.first_name} {u.id === MASTER_ID && <Star size={12} className="text-amber-500 fill-amber-500" />}</div><div className="text-[10px] text-zinc-500 font-bold">ID: {u.id}</div></div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleToggleBlock(u.id, u.device_info?.is_blocked)} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${u.device_info?.is_blocked ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Ban size={18} /></button>
-                    <button onClick={() => handleToggleAdmin(u.id, u.is_admin)} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${u.is_admin ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Shield size={18} /></button>
+                    <button onClick={() => handleToggleBlock(u.id, u.device_info?.is_blocked)} className={`w-11 h-11 rounded-2xl flex items-center justify-center ${u.device_info?.is_blocked ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Ban size={18} /></button>
+                    <button onClick={() => handleToggleAdmin(u.id, u.is_admin)} className={`w-11 h-11 rounded-2xl flex items-center justify-center ${u.is_admin ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Shield size={18} /></button>
                   </div>
                 </div>
               ))}
@@ -229,10 +218,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
           {activeTab === 'broadcast' && (
              <motion.div key="broadcast" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
               <div className="bg-zinc-900/60 p-8 rounded-[40px] border border-white/5">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4 block">تفاصيل البث المباشر</label>
-                <input type="text" placeholder="عنوان الإشعار القصير..." value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-600 mb-4" />
-                <textarea placeholder="اكتب محتوى الرسالة هنا..." value={notifBody} onChange={(e) => setNotifBody(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none mb-6 focus:border-blue-600" />
-                <button onClick={handleBroadcast} className="w-full py-5 bg-blue-600 rounded-[24px] font-black text-sm flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-blue-600/20 transition-all"><Send size={18} /> بدء البث اللحظي</button>
+                <input type="text" placeholder="عنوان الإشعار..." value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none mb-4" />
+                <textarea placeholder="محتوى الرسالة..." value={notifBody} onChange={(e) => setNotifBody(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none mb-6" />
+                <button onClick={handleBroadcast} className="w-full py-5 bg-blue-600 rounded-[24px] font-black text-sm flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-blue-600/20 transition-all"><Send size={18} /> بث الإشعار الآن</button>
               </div>
             </motion.div>
           )}
@@ -240,29 +228,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
           {activeTab === 'maintenance' && (
             <motion.div key="maintenance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="bg-zinc-900/60 border border-white/5 rounded-[40px] p-8">
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${config.maintenanceMode ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
-                      <Construction size={24} />
-                    </div>
-                    <div><h3 className="text-sm font-black text-zinc-200">وضع الصيانة الفوري</h3><p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tight">System Global Lock</p></div>
-                  </div>
-                  <button onClick={() => onUpdateConfig({ maintenanceMode: !config.maintenanceMode })} className={`w-16 h-8 rounded-full p-1.5 flex items-center transition-all shadow-inner ${config.maintenanceMode ? 'bg-amber-500' : 'bg-zinc-800'}`}><motion.div animate={{ x: config.maintenanceMode ? -32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></button>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4"><Construction size={24} className="text-amber-500" /><div><h3 className="text-sm font-black">وضع الصيانة</h3><p className="text-[10px] text-zinc-600 font-bold uppercase">System Global Lock</p></div></div>
+                  <button onClick={() => onUpdateConfig({ maintenanceMode: !config.maintenanceMode })} className={`w-14 h-7 rounded-full p-1 transition-all ${config.maintenanceMode ? 'bg-amber-500' : 'bg-zinc-800'}`}><motion.div animate={{ x: config.maintenanceMode ? -28 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></button>
                 </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">رسالة الصيانة للمستخدمين</label>
-                    <textarea value={config.maintenanceMessage} onChange={(e) => onUpdateConfig({ maintenanceMessage: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-28 resize-none focus:border-amber-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">الوقت المتبقي المتوقع</label>
-                    <input type="text" value={config.maintenanceTime} onChange={(e) => onUpdateConfig({ maintenanceTime: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none focus:border-amber-500" />
-                  </div>
-                  <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/10 text-[10px] text-amber-500/60 font-bold leading-relaxed">
-                    * عند تفعيل هذا الوضع، سيتم حجب واجهة التطبيق عن جميع المستخدمين باستثناء الأدمن.
-                  </div>
-                </div>
+                <textarea value={config.maintenanceMessage} onChange={(e) => onUpdateConfig({ maintenanceMessage: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-28 mb-4 resize-none" />
+                <input type="text" value={config.maintenanceTime} onChange={(e) => onUpdateConfig({ maintenanceTime: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none" placeholder="الوقت المتوقع..." />
               </div>
             </motion.div>
           )}

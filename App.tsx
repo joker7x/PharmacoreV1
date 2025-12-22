@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock, Settings, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,8 +16,6 @@ import { getGlobalConfig, updateGlobalConfig, syncTelegramUser, getInvoice, vali
 
 const MASTER_ID = 1541678512;
 
-// Fix for: Error in file App.tsx on line 157: Property 'children' is missing in type '{}' but required in type '{ children: React.ReactNode; }'.
-// Making children optional to resolve issues where the TypeScript compiler fails to correctly detect children in complex nested JSX structures.
 const ViewTransition = ({ children }: { children?: React.ReactNode }) => (
   <motion.div 
     initial={{ opacity: 0, scale: 0.98 }} 
@@ -36,7 +33,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [configLoading, setConfigLoading] = useState<boolean>(true);
   const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [mode, setMode] = useState<TabMode>('all');
   const [search, setSearch] = useState<string>('');
   const [currentView, setCurrentView] = useState<AppView>('home');
@@ -50,6 +46,8 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [itemsLimit, setItemsLimit] = useState(100);
   const [sharedInvoice, setSharedInvoice] = useState<any | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const [config, setConfig] = useState({
     aiAnalysis: true, marketCheck: true, maintenanceMode: false,
@@ -57,8 +55,10 @@ const App: React.FC = () => {
     maintenanceTime: "ساعة واحدة", liveSync: true
   });
 
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const loadNotifications = () => {
+    const saved = localStorage.getItem('dwa_notifications');
+    if (saved) setNotifications(JSON.parse(saved));
+  };
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -66,7 +66,7 @@ const App: React.FC = () => {
       tg.ready();
       tg.expand();
       const user = tg.initDataUnsafe?.user;
-      const startParam = tg.initDataUnsafe?.start_param;
+      const startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('tgWebAppStartParam');
 
       if (user) {
         setTgUser(user);
@@ -84,23 +84,21 @@ const App: React.FC = () => {
 
       if (startParam && startParam.startsWith('inv_')) {
         const parts = startParam.split('_');
-        if (parts.length >= 3) {
-          const invId = parts[1];
-          const token = parts[2];
-          setLoading(true);
-          validateShareToken(invId, token).then(isValid => {
-            if (isValid) {
-              getInvoice(invId).then(inv => {
-                if (inv) {
-                  setSharedInvoice(inv);
-                  setCurrentView('invoice');
-                }
-              }).finally(() => setLoading(false));
-            } else {
-              setLoading(false);
-            }
-          });
-        }
+        const invId = parts[1];
+        const token = parts[2];
+        setLoading(true);
+        validateShareToken(invId, token).then(isValid => {
+          if (isValid) {
+            getInvoice(invId).then(inv => {
+              if (inv) {
+                setSharedInvoice(inv);
+                setCurrentView('invoice');
+              }
+            }).finally(() => setLoading(false));
+          } else {
+            setLoading(false);
+          }
+        });
       }
     }
 
@@ -109,6 +107,10 @@ const App: React.FC = () => {
     if (savedDarkMode) document.documentElement.classList.add('dark');
     
     getGlobalConfig().then(c => { if (c) setConfig(c); setConfigLoading(false); });
+    loadNotifications();
+
+    window.addEventListener('storage', loadNotifications);
+    return () => window.removeEventListener('storage', loadNotifications);
   }, []);
 
   const loadData = useCallback(async (isInitial: boolean = false) => {
@@ -124,10 +126,9 @@ const App: React.FC = () => {
         filtered = filtered.filter(d => (d.name_en?.toLowerCase().includes(s)) || (d.name_ar?.includes(s)));
       }
       setDrugs(isInitial ? filtered.slice(0, itemsLimit) : prev => [...prev, ...filtered.slice(0, itemsLimit - prev.length)]);
-      setHasMore(filtered.length >= 100 && drugs.length < itemsLimit);
       setOffset(currentOffset + 100);
     } catch (e) {} finally { setLoading(false); }
-  }, [offset, search, mode, configLoading, isBlocked, itemsLimit, drugs.length, config.maintenanceMode, isAdmin]);
+  }, [offset, search, mode, configLoading, isBlocked, itemsLimit, config.maintenanceMode, isAdmin]);
 
   useEffect(() => { if (!configLoading) loadData(true); }, [mode, search, config.maintenanceMode, configLoading, itemsLimit]);
 
@@ -138,7 +139,7 @@ const App: React.FC = () => {
     } else { alert('رمز الدخول غير صحيح'); }
   };
 
-  if (isBlocked) return <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center p-8 text-center" dir="rtl"><h1 className="text-3xl font-black text-white mb-4">الدخول محظور</h1></div>;
+  if (isBlocked) return <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center p-8 text-center" dir="rtl"><h1 className="text-3xl font-black text-white mb-4">الدخول محظور</h1><p className="text-zinc-500 font-bold">يرجى التواصل مع الإدارة</p></div>;
   
   if (configLoading) return (
     <div className="min-h-screen bg-brand-background dark:bg-brand-dark flex flex-col items-center justify-center gap-6">
@@ -153,28 +154,28 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={c => { setConfig(prev => ({...prev, ...c})); updateGlobalConfig({...config, ...c}); }} currentUser={tgUser}/>;
-      case 'settings': return <SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => isAdmin ? setCurrentView('admin') : setShowLogin(true)} />;
+      case 'settings': return <SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); localStorage.setItem('dwa_dark_mode', next.toString()); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => isAdmin ? setCurrentView('admin') : setShowLogin(true)} />;
       case 'stats': return <StatsView drugs={drugs} onBack={() => setCurrentView('home')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => { setSharedInvoice(null); setCurrentView('home'); }} sharedInvoice={sharedInvoice} />;
       default: return (
         <ViewTransition>
-          <div className="pt-10 pb-4">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-black text-slate-900 dark:text-white">Pharma <span className="text-blue-600">Core</span></h1>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[10px] font-black text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">PREMIUM</span>
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 mt-0.5">مرحباً، {tgUser?.first_name || 'صيدلي كور'}</p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowNotifications(true)} className="w-11 h-11 rounded-[16px] bg-white dark:bg-zinc-900 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-white/5 shadow-sm relative active:scale-95 transition-all">
-                  <Bell size={18} />
-                  {notifications.some(n => !n.isRead) && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900" />}
-                </button>
+          <div className="pt-6 pb-4">
+            <div className="flex items-center justify-between mb-6 px-1">
+              <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-[16px] bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all">
                   <Sparkles size={18} />
                 </div>
+                <button onClick={() => setShowNotifications(true)} className="w-11 h-11 rounded-[16px] bg-white dark:bg-zinc-900 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-white/5 shadow-sm relative active:scale-95 transition-all">
+                  <Bell size={18} />
+                  {notifications.some(n => !n.isRead) && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900 animate-pulse" />}
+                </button>
+              </div>
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[9px] font-black text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">PREMIUM</span>
+                  <h1 className="text-[20px] font-black text-slate-900 dark:text-white leading-none">Pharma <span className="text-blue-600">Core</span></h1>
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 mt-1">مرحباً، {tgUser?.first_name || 'صيدلي كور'}</p>
               </div>
             </div>
 
@@ -187,7 +188,7 @@ const App: React.FC = () => {
                 placeholder="ابحث عن دواء بالاسم..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
-                className="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 rounded-[22px] px-6 py-4.5 pr-13 text-[15px] font-bold text-right outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all shadow-sm dark:shadow-none" 
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 rounded-[22px] px-6 py-4 pr-13 text-[14px] font-bold text-right outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all shadow-sm dark:shadow-none" 
               />
             </div>
 
@@ -265,7 +266,16 @@ const App: React.FC = () => {
       </AnimatePresence>
       
       <AnimatePresence>
-        {showNotifications && <NotificationsModal notifications={notifications} onClose={() => setShowNotifications(false)} onClear={() => setNotifications([])} />}
+        {showNotifications && (
+          <NotificationsModal 
+            notifications={notifications} 
+            onClose={() => setShowNotifications(false)} 
+            onClear={() => {
+              setNotifications([]);
+              localStorage.setItem('dwa_notifications', '[]');
+            }} 
+          />
+        )}
       </AnimatePresence>
     </div>
   );

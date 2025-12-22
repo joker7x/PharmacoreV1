@@ -1,4 +1,3 @@
-
 import { BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY, BOT_USERNAME } from '../constants';
 
 export default async function handler(req: any, res: any) {
@@ -14,17 +13,14 @@ export default async function handler(req: any, res: any) {
   const chatId = message.chat.id;
   const text = message.text;
 
-  console.log("Telegram Received:", text);
-
-  // معالجة رابط الفاتورة: /start inv_ID_TOKEN
+  // Handle deep link from bot start: /start inv_ID_TOKEN
   if (text.startsWith('/start inv_')) {
-    const payload = text.split(' ')[1]; // استخراج inv_ID_TOKEN
+    const payload = text.split(' ')[1]; 
     if (payload) {
       const parts = payload.split('_');
       const invoiceId = parts[1];
       const token = parts[2];
 
-      // التحقق من التوكن في سوبابيز
       const checkRes = await fetch(
         `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&is_used=eq.false&select=*`,
         {
@@ -39,21 +35,21 @@ export default async function handler(req: any, res: any) {
       const isValid = shares && shares.length > 0 && new Date(shares[0].expires_at) > new Date();
 
       if (isValid) {
-        const responseText = `🛡️ *تأكيد الهوية الرقمية للفاتورة*\n\nرقم الفاتورة: \`${invoiceId}\`\n\nلقد تم التحقق من أمان الرابط. يمكنك الآن عرض تفاصيل الفاتورة والأسعار المحدثة من خلال الزر أدناه:`;
+        const responseText = `🛡️ *تأكيد الهوية الرقمية للفاتورة*\n\nرقم الفاتورة: \`${invoiceId}\`\n\nلقد تم التحقق من أمان الرابط بنجاح. يمكنك الآن عرض الفاتورة بالكامل من خلال الرابط أدناه:`;
         
         await sendTelegramMessage(chatId, responseText, [
           [{ 
             text: "📂 عرض الفاتورة الإلكترونية", 
-            // استخدام رابط الميني آب المباشر
+            // Correct format to trigger tgWebAppStartParam in the WebApp
             url: `https://t.me/${BOT_USERNAME}/app?startapp=${payload}` 
           }]
         ]);
       } else {
-        await sendTelegramMessage(chatId, "⚠️ *عذراً، هذا الرابط منتهي الصلاحية*\n\nروابط الفواتير مؤمنة للاستخدام لمرة واحدة فقط أو لفترة زمنية محدودة. يرجى طلب رابط جديد من الصيدلية.");
+        await sendTelegramMessage(chatId, "⚠️ *عذراً، هذا الرابط منتهي الصلاحية*\n\nروابط الفواتير صالحة لفترة زمنية محدودة فقط لضمان الخصوصية. يرجى طلب رابط جديد.");
       }
     }
   } else if (text === '/start') {
-    await sendTelegramMessage(chatId, "مرحباً بك في *Pharma Core Terminal* ⚡\n\nهذا البوت هو بوابتك الآمنة لمراجعة الفواتير الطبية المعتمدة. عند استلامك لرابط فاتورة، اضغط عليه وسيتم التحقق من هويتك هنا.");
+    await sendTelegramMessage(chatId, "مرحباً بك في *Pharma Core Terminal* ⚡\n\nهذا البوت مخصص لمراجعة الفواتير الطبية المعتمدة. عند استلامك لرابط خاص بفاتورة، اضغط عليه ليتم نقلك لعرض التفاصيل بأمان.");
   }
 
   return res.status(200).send('ok');
