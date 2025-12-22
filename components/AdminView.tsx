@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -6,7 +5,6 @@ import {
   ShieldOff, Shield, Loader2, Sparkles, Globe, Construction, Clock, Info, 
   AlertCircle, UserCheck, UserMinus, Star, Search, Filter, Smartphone, Calendar,
   Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot, Link as LinkIcon, Settings as SettingsIcon,
-  // Added RefreshCw to fix the "Cannot find name 'RefreshCw'" error
   RefreshCw
 } from 'lucide-react';
 import { AppNotification } from '../types';
@@ -95,7 +93,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   };
 
   const handleBroadcast = () => {
-    if (!notifTitle.trim() || !notifBody.trim()) return;
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      alert('يرجى ملء كافة حقول الإشعار');
+      return;
+    }
     const newNotif: AppNotification = { 
       id: Date.now().toString(), title: notifTitle, message: notifBody, type: notifType, 
       timestamp: new Date().toISOString(), isRead: false 
@@ -104,7 +105,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
     localStorage.setItem('dwa_notifications', JSON.stringify([newNotif, ...JSON.parse(existingStr)]));
     window.dispatchEvent(new Event('storage'));
     setNotifTitle(''); setNotifBody('');
-    alert('✅ تم بث الإشعار بنجاح.');
+    alert('✅ تم بث الإشعار بنجاح لجميع مستخدمي هذا المتصفح.');
   };
 
   const TabButton = ({ id, label, icon: Icon }: any) => (
@@ -125,7 +126,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
         </div>
       </div>
       <button onClick={() => onToggle(!value)} className={`w-14 h-7 rounded-full p-1 transition-all ${value ? 'bg-blue-600' : 'bg-zinc-800'}`}>
-        <motion.div animate={{ x: value ? -28 : 0 }} className="w-5 h-5 bg-white rounded-full" />
+        <motion.div animate={{ x: value ? -28 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-md" />
       </button>
     </div>
   );

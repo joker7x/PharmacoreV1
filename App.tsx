@@ -55,18 +55,21 @@ const App: React.FC = () => {
     maintenanceTime: "ساعة واحدة", liveSync: true
   });
 
-  const loadNotifications = () => {
+  const loadNotifications = useCallback(() => {
     const saved = localStorage.getItem('dwa_notifications');
     if (saved) setNotifications(JSON.parse(saved));
-  };
+  }, []);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
+      
       const user = tg.initDataUnsafe?.user;
-      const startParam = tg.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+      // Start param can come from direct deep link OR startapp parameter
+      const startParam = tg.initDataUnsafe?.start_param || 
+                         new URLSearchParams(window.location.hash.split('?')[1] || window.location.search).get('startapp');
 
       if (user) {
         setTgUser(user);
@@ -84,21 +87,23 @@ const App: React.FC = () => {
 
       if (startParam && startParam.startsWith('inv_')) {
         const parts = startParam.split('_');
-        const invId = parts[1];
-        const token = parts[2];
-        setLoading(true);
-        validateShareToken(invId, token).then(isValid => {
-          if (isValid) {
-            getInvoice(invId).then(inv => {
-              if (inv) {
-                setSharedInvoice(inv);
-                setCurrentView('invoice');
-              }
-            }).finally(() => setLoading(false));
-          } else {
-            setLoading(false);
-          }
-        });
+        if (parts.length >= 3) {
+          const invId = parts[1];
+          const token = parts[2];
+          setLoading(true);
+          validateShareToken(invId, token).then(isValid => {
+            if (isValid) {
+              getInvoice(invId).then(inv => {
+                if (inv) {
+                  setSharedInvoice(inv);
+                  setCurrentView('invoice');
+                }
+              }).finally(() => setLoading(false));
+            } else {
+              setLoading(false);
+            }
+          });
+        }
       }
     }
 
@@ -111,7 +116,7 @@ const App: React.FC = () => {
 
     window.addEventListener('storage', loadNotifications);
     return () => window.removeEventListener('storage', loadNotifications);
-  }, []);
+  }, [loadNotifications]);
 
   const loadData = useCallback(async (isInitial: boolean = false) => {
     if (configLoading || isBlocked || (config.maintenanceMode && !isAdmin)) return;
@@ -130,7 +135,7 @@ const App: React.FC = () => {
     } catch (e) {} finally { setLoading(false); }
   }, [offset, search, mode, configLoading, isBlocked, itemsLimit, config.maintenanceMode, isAdmin]);
 
-  useEffect(() => { if (!configLoading) loadData(true); }, [mode, search, config.maintenanceMode, configLoading, itemsLimit]);
+  useEffect(() => { if (!configLoading) loadData(true); }, [mode, search, config.maintenanceMode, configLoading, itemsLimit, loadData]);
 
   const handleLogin = () => {
     if (passcode === '547419') {
@@ -160,7 +165,7 @@ const App: React.FC = () => {
       default: return (
         <ViewTransition>
           <div className="pt-6 pb-4">
-            <div className="flex items-center justify-between mb-6 px-1">
+            <div className="flex items-center justify-between mb-8 px-1">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-[16px] bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all">
                   <Sparkles size={18} />
@@ -175,7 +180,7 @@ const App: React.FC = () => {
                   <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[9px] font-black text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">PREMIUM</span>
                   <h1 className="text-[20px] font-black text-slate-900 dark:text-white leading-none">Pharma <span className="text-blue-600">Core</span></h1>
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 mt-1">مرحباً، {tgUser?.first_name || 'صيدلي كور'}</p>
+                <p className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 mt-1">مرحباً، {tgUser?.first_name || 'صيدلي كور'}</p>
               </div>
             </div>
 
@@ -188,7 +193,7 @@ const App: React.FC = () => {
                 placeholder="ابحث عن دواء بالاسم..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
-                className="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 rounded-[22px] px-6 py-4 pr-13 text-[14px] font-bold text-right outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all shadow-sm dark:shadow-none" 
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 rounded-[22px] px-6 py-4.5 pr-13 text-[14px] font-bold text-right outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all shadow-sm dark:shadow-none" 
               />
             </div>
 
@@ -273,6 +278,7 @@ const App: React.FC = () => {
             onClear={() => {
               setNotifications([]);
               localStorage.setItem('dwa_notifications', '[]');
+              window.dispatchEvent(new Event('storage'));
             }} 
           />
         )}
