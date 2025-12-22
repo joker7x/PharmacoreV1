@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -5,7 +6,7 @@ import {
   ShieldOff, Shield, Loader2, Sparkles, Globe, Construction, Clock, Info, 
   AlertCircle, UserCheck, UserMinus, Star, Search, Filter, Smartphone, Calendar,
   Ban, Lock, Unlock, Layers, CheckSquare, Square, Trash2, MessageSquare, Bot, Link as LinkIcon, Settings as SettingsIcon,
-  RefreshCw
+  RefreshCw, Radio, HardDrive, Terminal, ExternalLink
 } from 'lucide-react';
 import { AppNotification } from '../types';
 import { getAllUsers, updateUserPermissions } from '../services/supabase.ts';
@@ -34,7 +35,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [botStatus, setBotStatus] = useState<any>(null);
+  const [webhookInfo, setWebhookInfo] = useState<any>(null);
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
+  const [isCheckingBot, setIsCheckingBot] = useState(false);
   
   const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
@@ -49,11 +52,22 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   };
 
   const checkBotStatus = async () => {
+    setIsCheckingBot(true);
     try {
-      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`);
-      const data = await res.json();
-      setBotStatus(data.result);
-    } catch (e) { setBotStatus({ error: true }); }
+      // Get Bot Info
+      const resMe = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`);
+      const dataMe = await resMe.json();
+      setBotStatus(dataMe.result);
+
+      // Get Webhook Info
+      const resWh = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
+      const dataWh = await resWh.json();
+      setWebhookInfo(dataWh.result);
+    } catch (e) { 
+      setBotStatus({ error: true }); 
+    } finally {
+      setIsCheckingBot(false);
+    }
   };
 
   const setupWebhook = async () => {
@@ -68,9 +82,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
       const webhookUrl = `${currentUrl}/api/telegram`;
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${webhookUrl}`);
       const data = await res.json();
-      if (data.ok) alert(`✅ تم الربط بنجاح!\n${webhookUrl}`);
-      else alert("❌ فشل الربط: " + data.description);
-    } catch (e) { alert("❌ خطأ في الاتصال."); } finally { setIsSettingWebhook(false); }
+      if (data.ok) {
+        alert(`✅ تم الربط بنجاح!\n${webhookUrl}`);
+        checkBotStatus();
+      } else {
+        alert("❌ فشل الربط: " + data.description);
+      }
+    } catch (e) { 
+      alert("❌ خطأ في الاتصال."); 
+    } finally { 
+      setIsSettingWebhook(false); 
+    }
   };
 
   useEffect(() => {
@@ -177,20 +199,83 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
           {activeTab === 'bot' && (
             <motion.div key="bot" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-              <div className="bg-zinc-900/60 p-8 rounded-[40px] border border-white/5 text-center">
-                <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 border border-indigo-500/30">
-                  <Bot size={40} />
+              <div className="bg-zinc-900/60 p-6 rounded-[40px] border border-white/5">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-500">
+                      <Bot size={32} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black">Telegram Bot Info</h3>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${botStatus?.id ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500'}`} />
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase">{botStatus?.id ? 'Online' : 'Checking...'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={checkBotStatus} disabled={isCheckingBot} className="p-3 rounded-xl bg-white/5 text-zinc-400 active:scale-95 transition-all">
+                    <RefreshCw size={18} className={isCheckingBot ? 'animate-spin' : ''} />
+                  </button>
                 </div>
-                {botStatus ? (
-                  <>
-                    <h3 className="text-xl font-black mb-1">@{botStatus.username}</h3>
-                    <p className="text-zinc-500 text-sm mb-6 font-bold">{botStatus.first_name}</p>
-                    <button onClick={setupWebhook} disabled={isSettingWebhook} className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
-                      {isSettingWebhook ? <Loader2 className="animate-spin" size={18} /> : <LinkIcon size={18} />}
-                      تفعيل Webhook البوت
-                    </button>
-                  </>
-                ) : <Loader2 className="animate-spin mx-auto text-zinc-600" size={32} />}
+
+                {botStatus && !botStatus.error ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
+                        <div className="text-[9px] font-black text-zinc-500 uppercase mb-1">Bot Name</div>
+                        <div className="text-sm font-bold truncate">{botStatus.first_name}</div>
+                      </div>
+                      <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
+                        <div className="text-[9px] font-black text-zinc-500 uppercase mb-1">Username</div>
+                        <div className="text-sm font-bold text-blue-400">@{botStatus.username}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-black/20 p-5 rounded-3xl border border-white/5 space-y-4">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold">
+                           <LinkIcon size={14} /> Webhook Status
+                         </div>
+                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${webhookInfo?.url ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                           {webhookInfo?.url ? 'ACTIVE' : 'NOT SET'}
+                         </span>
+                      </div>
+                      
+                      {webhookInfo?.url && (
+                        <div className="text-[10px] font-mono text-zinc-500 break-all bg-black/40 p-3 rounded-xl">
+                          {webhookInfo.url}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-zinc-600 uppercase">Pending Updates</span>
+                          <span className="text-sm font-bold">{webhookInfo?.pending_update_count || 0}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-zinc-600 uppercase">Max Connections</span>
+                          <span className="text-sm font-bold">{webhookInfo?.max_connections || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-4">
+                      <button onClick={setupWebhook} disabled={isSettingWebhook} className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-blue-600/20 transition-all">
+                        {isSettingWebhook ? <Loader2 className="animate-spin" size={18} /> : <Terminal size={18} />}
+                        تحديث Webhook النظام
+                      </button>
+                      <button onClick={() => window.open(`https://t.me/${botStatus.username}`, '_blank')} className="w-full py-4 bg-zinc-800 text-white rounded-[24px] font-black text-xs flex items-center justify-center gap-2 active:scale-95 border border-white/5">
+                        <ExternalLink size={16} /> فتح البوت في تليجرام
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-10 text-center flex flex-col items-center gap-4">
+                    <AlertCircle size={40} className="text-rose-500" />
+                    <p className="text-sm font-bold text-zinc-400">فشل في جلب بيانات البوت. تأكد من صحة الـ Token.</p>
+                    <button onClick={checkBotStatus} className="text-blue-500 text-xs font-black">إعادة المحاولة</button>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

@@ -67,7 +67,6 @@ const App: React.FC = () => {
       tg.expand();
       
       const user = tg.initDataUnsafe?.user;
-      // Start param can come from direct deep link OR startapp parameter
       const startParam = tg.initDataUnsafe?.start_param || 
                          new URLSearchParams(window.location.hash.split('?')[1] || window.location.search).get('startapp');
 
@@ -139,8 +138,12 @@ const App: React.FC = () => {
 
   const handleLogin = () => {
     if (passcode === '547419') {
-      setIsAuthorized(true); setShowLogin(false); setPasscode('');
-      setCurrentView('admin'); setItemsLimit(100000);
+      setIsAuthorized(true); 
+      setIsAdmin(true);
+      setShowLogin(false); 
+      setPasscode('');
+      setCurrentView('admin'); 
+      setItemsLimit(100000);
     } else { alert('رمز الدخول غير صحيح'); }
   };
 
@@ -155,6 +158,58 @@ const App: React.FC = () => {
       <p className="text-sm font-black text-slate-400 dark:text-zinc-600 uppercase tracking-widest">Pharma Core Security</p>
     </div>
   );
+
+  // شاشة وضع الصيانة القطعية
+  if (config.maintenanceMode && !isAdmin && currentView !== 'admin' && !sharedInvoice) {
+    return (
+      <div className="min-h-screen bg-brand-background dark:bg-brand-dark flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full">
+          <div className="w-24 h-24 bg-amber-500/10 text-amber-500 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-amber-500/5">
+            <Construction size={48} />
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4">وضع الصيانة</h1>
+          <p className="text-lg font-bold text-slate-500 dark:text-slate-400 mb-10 leading-relaxed">
+            {config.maintenanceMessage}
+          </p>
+          <div className="bg-slate-50 dark:bg-zinc-900 rounded-[28px] p-6 border border-slate-100 dark:border-white/5 flex items-center justify-center gap-4 mb-10">
+            <Clock className="text-blue-600" size={24} />
+            <div className="text-right">
+              <div className="text-[10px] font-black text-slate-400 uppercase">الوقت المتوقع</div>
+              <div className="text-lg font-black text-slate-900 dark:text-white">{config.maintenanceTime}</div>
+            </div>
+          </div>
+          <button onClick={() => setShowLogin(true)} className="w-full py-5 bg-blue-600 text-white rounded-[22px] font-black text-sm shadow-xl shadow-blue-500/20 active:scale-95 transition-all mb-4">
+            دخول المسؤولين
+          </button>
+        </motion.div>
+
+        <AnimatePresence>
+          {showLogin && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-white/10 w-full max-w-sm rounded-[40px] p-8 text-center shadow-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center mx-auto mb-6">
+                  <Lock size={28} />
+                </div>
+                <h2 className="text-xl font-black mb-2 dark:text-white">منطقة الإدارة</h2>
+                <p className="text-xs font-bold text-slate-500 mb-8">يرجى إدخال رمز الدخول الآمن</p>
+                <input 
+                  type="password" 
+                  value={passcode} 
+                  onChange={(e) => setPasscode(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 text-center text-3xl font-black mb-6 tracking-widest outline-none focus:border-blue-500" 
+                  autoFocus 
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 dark:text-white rounded-2xl font-black text-sm active:scale-95 transition-all">إلغاء</button>
+                  <button onClick={handleLogin} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all">دخول</button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   const renderView = () => {
     switch (currentView) {
@@ -241,31 +296,6 @@ const App: React.FC = () => {
       <AnimatePresence mode="wait">{renderView()}</AnimatePresence>
       {(currentView !== 'invoice') && <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />}
       
-      <AnimatePresence>
-        {showLogin && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-white/10 w-full max-w-sm rounded-[40px] p-8 text-center shadow-2xl">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center mx-auto mb-6">
-                <Lock size={28} />
-              </div>
-              <h2 className="text-xl font-black mb-2 dark:text-white">منطقة الإدارة</h2>
-              <p className="text-xs font-bold text-slate-500 mb-8">يرجى إدخال رمز الدخول الآمن</p>
-              <input 
-                type="password" 
-                value={passcode} 
-                onChange={(e) => setPasscode(e.target.value)} 
-                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 text-center text-3xl font-black mb-6 tracking-widest outline-none focus:border-blue-500" 
-                autoFocus 
-              />
-              <div className="flex gap-3">
-                <button onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 dark:text-white rounded-2xl font-black text-sm active:scale-95 transition-all">إلغاء</button>
-                <button onClick={handleLogin} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all">دخول</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       <AnimatePresence>
         {selectedDrug && <DrugIntelligenceModal drug={selectedDrug} onClose={() => setSelectedDrug(null)} isMarketEnabled={config.marketCheck} isAiEnabled={config.aiAnalysis} />}
       </AnimatePresence>

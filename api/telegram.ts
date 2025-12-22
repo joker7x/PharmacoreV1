@@ -1,4 +1,4 @@
-import { BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY, BOT_USERNAME } from '../constants';
+import { BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY } from '../constants';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -12,8 +12,9 @@ export default async function handler(req: any, res: any) {
 
   const chatId = message.chat.id;
   const text = message.text;
+  const host = req.headers.host || 'pharmacore.app'; // افتراض النطاق في حال عدم توفره
 
-  // Handle deep link from bot start: /start inv_ID_TOKEN
+  // التعامل مع روابط الفواتير العميقة: /start inv_ID_TOKEN
   if (text.startsWith('/start inv_')) {
     const payload = text.split(' ')[1]; 
     if (payload) {
@@ -36,27 +37,26 @@ export default async function handler(req: any, res: any) {
         const isValid = shares && shares.length > 0 && new Date(shares[0].expires_at) > new Date();
 
         if (isValid) {
-          const responseText = `🛡️ *تأكيد الهوية الرقمية للفاتورة*\n\nرقم الفاتورة: \`${invoiceId}\`\n\nلقد تم التحقق من أمان الرابط بنجاح. يمكنك الآن عرض الفاتورة بالكامل من خلال الرابط أدناه:`;
+          const responseText = `📄 *تم رصد طلب عرض فاتورة*\n\nرقم الفاتورة: \`${invoiceId}\`\nالحالة: *جاهزة للمعاينة*\nالصلاحية: *ساعة واحدة*\n\nاضغط على الزر أدناه لفتح الفاتورة بأمان داخل التطبيق:`;
           
           await sendTelegramMessage(chatId, responseText, [
             [{ 
-              text: "📂 عرض الفاتورة الإلكترونية", 
-              // Using web_app field to open the app directly inside Telegram with parameters
+              text: "👁️ عرض وتفاصيل الفاتورة", 
               web_app: { 
-                url: `https://${req.headers.host}/#invoice?startapp=${payload}` 
+                url: `https://${host}/#invoice?startapp=${payload}` 
               }
             }]
           ]);
         } else {
-          await sendTelegramMessage(chatId, "⚠️ *عذراً، هذا الرابط منتهي الصلاحية*\n\nروابط الفواتير صالحة لفترة زمنية محدودة فقط لضمان الخصوصية. يرجى طلب رابط جديد.");
+          await sendTelegramMessage(chatId, "⚠️ *عذراً، هذا الرابط غير صالح أو منتهي*\n\nروابط مشاركة الفواتير صالحة للاستخدام مرة واحدة أو لمدة ساعة كحد أقصى. يرجى طلب رابط جديد من الصيدلية.");
         }
       } catch (err) {
         console.error("Supabase error:", err);
-        await sendTelegramMessage(chatId, "❌ حدث خطأ أثناء التحقق من الفاتورة.");
+        await sendTelegramMessage(chatId, "❌ حدث خطأ تقني أثناء محاولة جلب بيانات الفاتورة.");
       }
     }
   } else if (text === '/start') {
-    await sendTelegramMessage(chatId, "مرحباً بك في *Pharma Core Terminal* ⚡\n\nهذا البوت مخصص لمراجعة الفواتير الطبية المعتمدة. عند استلامك لرابط خاص بفاتورة، اضغط عليه ليتم نقلك لعرض التفاصيل بأمان.");
+    await sendTelegramMessage(chatId, "مرحباً بك في *Pharma Core Terminal* ⚡\n\nأنا المساعد الذكي لإدارة الصيدلية. يمكنك استخدامي لـ:\n1️⃣ عرض الفواتير المشفرة.\n2️⃣ استلام تنبيهات الأسعار.\n3️⃣ تتبع حالة السوق.\n\n_بانتظار استلام رابط فاتورة لبدء العمل..._");
   }
 
   return res.status(200).send('ok');
