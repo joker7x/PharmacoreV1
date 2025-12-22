@@ -57,15 +57,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   };
 
   const setupWebhook = async () => {
-    const currentUrl = window.location.origin;
+    // استخراج رابط الدومين الحالي ديناميكياً
+    let currentUrl = window.location.origin;
+    
+    // إذا كان الرابط localhost (للتطوير)، يجب استخدام ngrok أو دومين حقيقي لتعمل تليجرام
+    if (currentUrl.includes('localhost')) {
+        alert("⚠️ لا يمكن ربط Webhook برابط Localhost. تليجرام تتطلب رابط HTTPS حقيقي (مثلاً على Vercel).");
+        return;
+    }
+
     setIsSettingWebhook(true);
     try {
-      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${currentUrl}/api/telegram`);
+      const webhookUrl = `${currentUrl}/api/telegram`;
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${webhookUrl}`);
       const data = await res.json();
-      if (data.ok) alert("✅ تم ربط البوت بنجاح بعناون:\n" + currentUrl);
-      else alert("❌ فشل الربط: " + data.description);
+      if (data.ok) {
+        alert(`✅ تم الربط بنجاح!\n\nرابط الـ Webhook النشط حالياً:\n${webhookUrl}\n\nتأكد من وجود ملف api/telegram.ts في مشروعك على Vercel.`);
+      } else {
+        alert("❌ فشل الربط: " + data.description);
+      }
     } catch (e) {
-      alert("❌ خطأ في الاتصال بتليجرام");
+      alert("❌ خطأ في الاتصال بخوادم تليجرام. تأكد من اتصال الإنترنت لديك.");
     } finally {
       setIsSettingWebhook(false);
     }
@@ -84,7 +96,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
   const handleToggleBlock = async (userId: number, currentStatus: boolean) => {
     if (userId === MASTER_ID) return;
-    if (confirm(currentStatus ? "فك الحظر؟" : "حظر المستخدم؟")) {
+    if (confirm(currentStatus ? "هل تود فك الحظر عن هذا المستخدم؟" : "هل تود حظر هذا المستخدم تماماً؟")) {
       await updateUserPermissions(userId, { is_blocked: !currentStatus });
       fetchUsers();
     }
@@ -100,7 +112,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
     localStorage.setItem('dwa_notifications', JSON.stringify([newNotif, ...JSON.parse(existingStr)]));
     window.dispatchEvent(new Event('storage'));
     setNotifTitle(''); setNotifBody('');
-    alert('تم البث بنجاح');
+    alert('✅ تم بث الإشعار لجميع المستخدمين بنجاح.');
   };
 
   const TabButton = ({ id, label, icon: Icon }: any) => (
@@ -115,10 +127,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-[#09090b] text-white pt-16 px-6 pb-40 overflow-y-auto no-scrollbar" dir="rtl">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl"><ShieldCheck size={30} /></div>
-          <div><h1 className="text-2xl font-black">لوحة التحكم</h1><p className="text-[10px] font-bold text-blue-500 uppercase">Pharma Core Terminal</p></div>
+          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20"><ShieldCheck size={30} /></div>
+          <div><h1 className="text-2xl font-black">لوحة التحكم</h1><p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Pharma Core Terminal</p></div>
         </div>
-        <button onClick={onBack} className="w-12 h-12 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-zinc-400"><ArrowRight size={20} /></button>
+        <button onClick={onBack} className="w-12 h-12 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-zinc-400 active:scale-90 transition-transform"><ArrowRight size={20} /></button>
       </div>
 
       <div className="sticky top-0 z-50 bg-[#09090b]/80 backdrop-blur-md pb-4 pt-2">
@@ -137,7 +149,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
             <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-4">
                <div className="bg-zinc-900/60 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between h-36">
                  <Database size={20} className="text-blue-500" />
-                 <div><div className="text-[10px] font-black text-zinc-500 uppercase mb-1">الأصناف</div><div className="text-3xl font-black">{drugsCount}</div></div>
+                 <div><div className="text-[10px] font-black text-zinc-500 uppercase mb-1">الأصناف المتاحة</div><div className="text-3xl font-black">{drugsCount}</div></div>
                </div>
                <div className="bg-zinc-900/60 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between h-36">
                  <Users size={20} className="text-emerald-500" />
@@ -149,13 +161,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
           {activeTab === 'bot' && (
             <motion.div key="bot" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="bg-zinc-900/60 p-8 rounded-[40px] border border-white/5 text-center">
-                <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 border border-indigo-500/30">
+                <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 border border-indigo-500/30 shadow-inner">
                   <Bot size={40} />
                 </div>
                 {botStatus ? (
                   <>
                     <h3 className="text-xl font-black mb-1">@{botStatus.username}</h3>
-                    <p className="text-zinc-500 text-sm mb-6">{botStatus.first_name}</p>
+                    <p className="text-zinc-500 text-sm mb-6 font-bold">{botStatus.first_name}</p>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
                         <div className="text-[10px] font-black text-zinc-500 uppercase mb-1">Status</div>
@@ -169,21 +181,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
                     <button 
                       onClick={setupWebhook} 
                       disabled={isSettingWebhook}
-                      className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                      className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-indigo-600/20"
                     >
                       {isSettingWebhook ? <Loader2 className="animate-spin" size={18} /> : <LinkIcon size={18} />}
                       تفعيل Webhook البوت
                     </button>
                   </>
-                ) : <Loader2 className="animate-spin mx-auto text-zinc-600" size={32} />}
+                ) : <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-zinc-600 mb-4" size={32} /><p className="text-[10px] font-black text-zinc-600 uppercase">Checking Connection...</p></div>}
               </div>
 
-              <div className="bg-amber-500/10 p-6 rounded-[32px] border border-amber-500/20 flex gap-4">
+              <div className="bg-amber-500/10 p-6 rounded-[32px] border border-amber-500/20 flex gap-4 shadow-inner">
                 <AlertCircle className="text-amber-500 shrink-0" size={24} />
                 <div>
-                  <h4 className="font-black text-amber-500 text-sm mb-1">تعليمات التشغيل</h4>
+                  <h4 className="font-black text-amber-500 text-sm mb-1">تعليمات الربط البرمجي</h4>
                   <p className="text-[11px] text-amber-500/80 leading-relaxed font-bold">
-                    زر "تفعيل Webhook" سيقوم بربط البوت برابط الموقع الحالي فوراً لتلقي طلبات الفواتير.
+                    زر "التفعيل" سيقوم بإعلام تليجرام بأن موقعك الحالي (على Vercel) هو المسؤول عن استقبال رسائل البوت. لا تضغط عليه إلا بعد التأكد من رفع الكود.
                   </p>
                 </div>
               </div>
@@ -192,19 +204,22 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
           {activeTab === 'users' && (
             <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-              <input type="text" placeholder="بحث باسم أو ID..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full bg-zinc-900/60 border border-white/10 rounded-2xl py-4 pr-6 text-sm font-bold outline-none" />
-              {loadingUsers ? <Loader2 className="animate-spin mx-auto text-blue-500" /> : users.filter(u => u.first_name?.includes(userSearch) || u.id?.toString().includes(userSearch)).map((u) => (
-                <div key={u.id} className="bg-zinc-900/40 border border-white/5 p-5 rounded-[32px] flex items-center justify-between">
+              <div className="relative mb-6">
+                 <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+                 <input type="text" placeholder="بحث باسم المستخدم أو المعرف..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full bg-zinc-900/60 border border-white/10 rounded-[24px] py-4.5 pr-14 text-sm font-bold outline-none focus:border-blue-600 transition-colors" />
+              </div>
+              {loadingUsers ? <Loader2 className="animate-spin mx-auto text-blue-500 py-10" /> : users.filter(u => u.first_name?.includes(userSearch) || u.id?.toString().includes(userSearch)).map((u) => (
+                <div key={u.id} className="bg-zinc-900/40 border border-white/5 p-5 rounded-[32px] flex items-center justify-between hover:bg-zinc-900/60 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-lg font-black border border-white/5">{u.first_name?.[0]}</div>
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-lg font-black border border-white/5 shadow-inner">{u.first_name?.[0]}</div>
                     <div>
-                      <div className="font-black text-sm">{u.first_name} {u.id === MASTER_ID && '⭐'}</div>
-                      <div className="text-[10px] text-zinc-500 font-bold">ID: {u.id}</div>
+                      <div className="font-black text-sm flex items-center gap-2">{u.first_name} {u.id === MASTER_ID && <Star size={12} className="text-amber-500 fill-amber-500" />}</div>
+                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">ID: {u.id}</div>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleToggleBlock(u.id, u.device_info?.is_blocked)} className={`w-10 h-10 rounded-full flex items-center justify-center ${u.device_info?.is_blocked ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}><Ban size={18} /></button>
-                    <button onClick={() => handleToggleAdmin(u.id, u.is_admin)} className={`w-10 h-10 rounded-full flex items-center justify-center ${u.is_admin ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}><Shield size={18} /></button>
+                    <button onClick={() => handleToggleBlock(u.id, u.device_info?.is_blocked)} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${u.device_info?.is_blocked ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Ban size={18} /></button>
+                    <button onClick={() => handleToggleAdmin(u.id, u.is_admin)} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${u.is_admin ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}><Shield size={18} /></button>
                   </div>
                 </div>
               ))}
@@ -213,21 +228,41 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
           {activeTab === 'broadcast' && (
              <motion.div key="broadcast" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
-              <input type="text" placeholder="عنوان الإشعار..." value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none" />
-              <textarea placeholder="محتوى الرسالة..." value={notifBody} onChange={(e) => setNotifBody(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none" />
-              <button onClick={handleBroadcast} className="w-full py-5 bg-blue-600 rounded-2xl font-black text-sm flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-blue-600/20"><Send size={18} /> إرسال البث</button>
+              <div className="bg-zinc-900/60 p-8 rounded-[40px] border border-white/5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4 block">تفاصيل البث المباشر</label>
+                <input type="text" placeholder="عنوان الإشعار القصير..." value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-600 mb-4" />
+                <textarea placeholder="اكتب محتوى الرسالة هنا..." value={notifBody} onChange={(e) => setNotifBody(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none mb-6 focus:border-blue-600" />
+                <button onClick={handleBroadcast} className="w-full py-5 bg-blue-600 rounded-[24px] font-black text-sm flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-blue-600/20 transition-all"><Send size={18} /> بدء البث اللحظي</button>
+              </div>
             </motion.div>
           )}
 
           {activeTab === 'maintenance' && (
             <motion.div key="maintenance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="bg-zinc-900/60 border border-white/5 rounded-[40px] p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div><h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">وضع الصيانة</h3><p className="text-[10px] text-zinc-600 font-bold uppercase">System Lock</p></div>
-                  <button onClick={() => onUpdateConfig({ maintenanceMode: !config.maintenanceMode })} className={`w-14 h-7 rounded-full p-1 flex items-center transition-all ${config.maintenanceMode ? 'bg-amber-500' : 'bg-zinc-800'}`}><motion.div animate={{ x: config.maintenanceMode ? -28 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></button>
+                <div className="flex items-center justify-between mb-10">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${config.maintenanceMode ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                      <Construction size={24} />
+                    </div>
+                    <div><h3 className="text-sm font-black text-zinc-200">وضع الصيانة الفوري</h3><p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tight">System Global Lock</p></div>
+                  </div>
+                  <button onClick={() => onUpdateConfig({ maintenanceMode: !config.maintenanceMode })} className={`w-16 h-8 rounded-full p-1.5 flex items-center transition-all shadow-inner ${config.maintenanceMode ? 'bg-amber-500' : 'bg-zinc-800'}`}><motion.div animate={{ x: config.maintenanceMode ? -32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></button>
                 </div>
-                <textarea value={config.maintenanceMessage} onChange={(e) => onUpdateConfig({ maintenanceMessage: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-24 resize-none mb-4" />
-                <input type="text" value={config.maintenanceTime} onChange={(e) => onUpdateConfig({ maintenanceTime: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none" />
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">رسالة الصيانة للمستخدمين</label>
+                    <textarea value={config.maintenanceMessage} onChange={(e) => onUpdateConfig({ maintenanceMessage: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-28 resize-none focus:border-amber-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">الوقت المتبقي المتوقع</label>
+                    <input type="text" value={config.maintenanceTime} onChange={(e) => onUpdateConfig({ maintenanceTime: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none focus:border-amber-500" />
+                  </div>
+                  <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/10 text-[10px] text-amber-500/60 font-bold leading-relaxed">
+                    * عند تفعيل هذا الوضع، سيتم حجب واجهة التطبيق عن جميع المستخدمين باستثناء الأدمن.
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

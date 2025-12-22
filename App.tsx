@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock } from 'lucide-react';
+import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchDrugBatchFromAPI } from './services/api.ts';
 import { Drug, TabMode, AppView, AppNotification } from './types.ts';
@@ -59,7 +59,6 @@ const App: React.FC = () => {
       tg.expand();
       
       const user = tg.initDataUnsafe?.user;
-      // اكتشاف start_param من تليجرام عند الفتح من رابط عميق
       const startParam = tg.initDataUnsafe?.start_param;
 
       if (user) {
@@ -76,6 +75,7 @@ const App: React.FC = () => {
         });
       }
 
+      // معالجة فتح الفاتورة من رابط تليجرام المباشر
       if (startParam && startParam.startsWith('inv_')) {
         const parts = startParam.split('_');
         if (parts.length >= 3) {
@@ -107,7 +107,7 @@ const App: React.FC = () => {
   }, []);
 
   const loadData = useCallback(async (isInitial: boolean = false) => {
-    if (configLoading || isBlocked) return;
+    if (configLoading || isBlocked || (config.maintenanceMode && !isAdmin)) return;
     setLoading(true);
     const currentOffset = isInitial ? 0 : offset;
     try {
@@ -122,7 +122,7 @@ const App: React.FC = () => {
       setHasMore(filtered.length >= 100 && drugs.length < itemsLimit);
       setOffset(currentOffset + 100);
     } catch (e) {} finally { setLoading(false); }
-  }, [offset, search, mode, configLoading, isBlocked, itemsLimit, drugs.length]);
+  }, [offset, search, mode, configLoading, isBlocked, itemsLimit, drugs.length, config.maintenanceMode, isAdmin]);
 
   useEffect(() => { if (!configLoading) loadData(true); }, [mode, search, config.maintenanceMode, configLoading, itemsLimit]);
 
@@ -136,9 +136,32 @@ const App: React.FC = () => {
   if (isBlocked) return <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-8 text-center" dir="rtl"><h1 className="text-3xl font-black text-white mb-4">الدخول محظور</h1></div>;
   if (configLoading) return <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>;
 
+  // شاشة الصيانة الفعالة
+  if (config.maintenanceMode && !isAdmin && currentView !== 'invoice') {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-10 text-center" dir="rtl">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 border border-white/5 p-10 rounded-[48px] shadow-2xl">
+          <div className="w-20 h-20 bg-amber-500/20 rounded-3xl flex items-center justify-center text-amber-500 mx-auto mb-8 shadow-lg shadow-amber-500/10">
+            <Construction size={40} />
+          </div>
+          <h1 className="text-2xl font-black text-white mb-4">النظام قيد التحديث</h1>
+          <p className="text-zinc-400 font-bold mb-8 leading-relaxed max-w-xs mx-auto">{config.maintenanceMessage}</p>
+          <div className="flex items-center justify-center gap-3 text-amber-500 bg-amber-500/10 py-3 px-6 rounded-2xl border border-amber-500/20">
+            <Clock size={18} />
+            <span className="text-sm font-black">الوقت المقدر: {config.maintenanceTime}</span>
+          </div>
+          <button onClick={() => setShowLogin(true)} className="mt-8 text-zinc-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mx-auto hover:text-white transition-colors">
+             <Lock size={12} /> Admin Login
+          </button>
+        </motion.div>
+        <AnimatePresence>{showLogin && (<div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6"><div className="bg-white dark:bg-zinc-900 border w-full max-w-sm rounded-[40px] p-8 text-center"><h2 className="text-xl font-black mb-6">منطقة الإدارة</h2><input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border rounded-2xl py-4 text-center text-2xl mb-6" autoFocus /><div className="flex gap-3"><button onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-slate-100 rounded-2xl">إلغاء</button><button onClick={handleLogin} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl">دخول</button></div></div></div>)}</AnimatePresence>
+      </div>
+    );
+  }
+
   const renderView = () => {
     switch (currentView) {
-      case 'admin': return <PageTransition><AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={c => { setConfig(c); updateGlobalConfig(c); }} currentUser={tgUser}/></PageTransition>;
+      case 'admin': return <PageTransition><AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={c => { setConfig(prev => ({...prev, ...c})); updateGlobalConfig({...config, ...c}); }} currentUser={tgUser}/></PageTransition>;
       case 'settings': return <PageTransition><SettingsView user={tgUser} darkMode={darkMode} toggleDarkMode={() => { const next = !darkMode; setDarkMode(next); if (next) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => isAdmin ? setCurrentView('admin') : setShowLogin(true)} /></PageTransition>;
       case 'stats': return <PageTransition><StatsView drugs={drugs} onBack={() => setCurrentView('home')} /></PageTransition>;
       case 'invoice': return <PageTransition><InvoiceBuilder onBack={() => { setSharedInvoice(null); setCurrentView('home'); }} sharedInvoice={sharedInvoice} /></PageTransition>;
@@ -154,7 +177,11 @@ const App: React.FC = () => {
             </div>
             <input type="text" placeholder="ابحث عن دواء..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-3xl px-6 py-4.5 text-right outline-none mb-6 shadow-sm" />
             <TabFilter current={mode} onChange={setMode} />
-            <div className="mt-8 space-y-4">{drugs.map((drug, idx) => (<DrugCard key={idx} drug={drug} index={idx} isFavorite={false} onToggleFavorite={() => {}} onOpenInfo={(d) => setSelectedDrug(d)} />))}</div>
+            {loading && drugs.length === 0 ? (
+                <div className="mt-20 text-center"><Loader2 className="animate-spin text-blue-500 mx-auto mb-4" size={32} /><p className="text-sm font-black text-slate-400">تحميل البيانات الحية...</p></div>
+            ) : (
+                <div className="mt-8 space-y-4">{drugs.map((drug, idx) => (<DrugCard key={idx} drug={drug} index={idx} isFavorite={false} onToggleFavorite={() => {}} onOpenInfo={(d) => setSelectedDrug(d)} />))}</div>
+            )}
           </div>
         </PageTransition>
       );
@@ -167,6 +194,7 @@ const App: React.FC = () => {
       {(currentView !== 'invoice') && <BottomNavigation currentView={currentView} onNavigate={setCurrentView} />}
       <AnimatePresence>{showLogin && (<div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6"><div className="bg-white dark:bg-zinc-900 border w-full max-w-sm rounded-[40px] p-8 text-center"><h2 className="text-xl font-black mb-6">منطقة الإدارة</h2><input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border rounded-2xl py-4 text-center text-2xl mb-6" autoFocus /><div className="flex gap-3"><button onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-slate-100 rounded-2xl">إلغاء</button><button onClick={handleLogin} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl">دخول</button></div></div></div>)}</AnimatePresence>
       <AnimatePresence>{selectedDrug && <DrugIntelligenceModal drug={selectedDrug} onClose={() => setSelectedDrug(null)} isMarketEnabled={config.marketCheck} isAiEnabled={config.aiAnalysis} />}</AnimatePresence>
+      <AnimatePresence>{showNotifications && <NotificationsModal notifications={notifications} onClose={() => setShowNotifications(false)} onClear={() => setNotifications([])} />}</AnimatePresence>
     </div>
   );
 };
