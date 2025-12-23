@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock, Settings, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -67,8 +68,11 @@ const App: React.FC = () => {
       tg.expand();
       
       const user = tg.initDataUnsafe?.user;
-      const startParam = tg.initDataUnsafe?.start_param || 
-                         new URLSearchParams(window.location.hash.split('?')[1] || window.location.search).get('startapp');
+      
+      // استخراج المعاملات من URL في حالة الفتح عبر زر WebApp
+      const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search);
+      const token = urlParams.get('token');
+      const invId = urlParams.get('id');
 
       if (user) {
         setTgUser(user);
@@ -84,25 +88,22 @@ const App: React.FC = () => {
         });
       }
 
-      if (startParam && startParam.startsWith('inv_')) {
-        const parts = startParam.split('_');
-        if (parts.length >= 3) {
-          const invId = parts[1];
-          const token = parts[2];
-          setLoading(true);
-          validateShareToken(invId, token).then(isValid => {
-            if (isValid) {
-              getInvoice(invId).then(inv => {
-                if (inv) {
-                  setSharedInvoice(inv);
-                  setCurrentView('invoice');
-                }
-              }).finally(() => setLoading(false));
-            } else {
-              setLoading(false);
-            }
-          });
-        }
+      // معالجة الفتح المباشر للفاتورة عبر التوكن الآمن
+      if (token && invId) {
+        setLoading(true);
+        validateShareToken(invId, token).then(isValid => {
+          if (isValid) {
+            getInvoice(invId).then(inv => {
+              if (inv) {
+                setSharedInvoice(inv);
+                setCurrentView('invoice');
+              }
+            }).finally(() => setLoading(false));
+          } else {
+            setLoading(false);
+            alert("عذراً، الرابط منتهي الصلاحية.");
+          }
+        });
       }
     }
 
