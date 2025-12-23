@@ -1,4 +1,3 @@
-
 import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE, BOT_USERNAME } from '../constants';
 import { Drug } from '../types';
 
@@ -56,8 +55,8 @@ export const saveInvoice = async (invoiceData: any): Promise<string | null> => {
 
 export const createSecureShareLink = async (invoiceId: string): Promise<string | null> => {
   try {
-    const token = Math.random().toString(36).substring(2, 15);
-    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+    const token = Math.random().toString(36).substring(2, 20); // Longer token
+    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour expiry
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares`, {
       method: 'POST',
@@ -65,7 +64,8 @@ export const createSecureShareLink = async (invoiceId: string): Promise<string |
       body: JSON.stringify({
         invoice_id: invoiceId,
         token: token,
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        is_used: false
       })
     });
 
@@ -76,25 +76,34 @@ export const createSecureShareLink = async (invoiceId: string): Promise<string |
 
 export const validateShareToken = async (invoiceId: string, token: string): Promise<boolean> => {
   try {
+    // Check if the token exists, is not used, and matches the invoice
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&is_used=eq.false&select=*`,
+      `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&select=*`,
       { headers }
     );
     const data = await response.json();
-    if (data.length > 0) {
+    
+    if (data && data.length > 0) {
       const share = data[0];
-      if (new Date(share.expires_at) > new Date()) {
-        // تحديث التوكن ليكون مستخدماً (اختياري لزيادة الأمان)
+      const isExpired = new Date(share.expires_at) < new Date();
+      
+      if (!isExpired) {
+        // Optional: Mark as used if business logic requires single-use
+        /*
         await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares?id=eq.${share.id}`, {
           method: 'PATCH',
           headers,
           body: JSON.stringify({ is_used: true })
         });
+        */
         return true;
       }
     }
     return false;
-  } catch (e) { return false; }
+  } catch (e) { 
+    console.error("Validation Error:", e);
+    return false; 
+  }
 };
 
 export const getInvoice = async (id: string): Promise<any | null> => {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Sparkles, RefreshCw, Package, Bell, Layout, ArrowLeft, ShieldCheck, Construction, Clock, AlertTriangle, Eye, Loader2, LogIn, ShieldAlert, Ban, Lock, Settings, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,10 +68,12 @@ const App: React.FC = () => {
       
       const user = tg.initDataUnsafe?.user;
       
-      // استخراج المعاملات من URL في حالة الفتح عبر زر WebApp
-      const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search);
-      const token = urlParams.get('token');
-      const invId = urlParams.get('id');
+      // We parse parameters from both hash (for SPA friendliness) and search
+      const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      const token = hashParams.get('token') || searchParams.get('token');
+      const invId = hashParams.get('id') || searchParams.get('id');
 
       if (user) {
         setTgUser(user);
@@ -88,7 +89,7 @@ const App: React.FC = () => {
         });
       }
 
-      // معالجة الفتح المباشر للفاتورة عبر التوكن الآمن
+      // If opening via a bot-provided deep link (WebApp mode)
       if (token && invId) {
         setLoading(true);
         validateShareToken(invId, token).then(isValid => {
@@ -101,7 +102,7 @@ const App: React.FC = () => {
             }).finally(() => setLoading(false));
           } else {
             setLoading(false);
-            alert("عذراً، الرابط منتهي الصلاحية.");
+            alert("عذراً، هذا الرابط غير صالح أو منتهي الصلاحية.");
           }
         });
       }
@@ -160,7 +161,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  // شاشة وضع الصيانة القطعية
   if (config.maintenanceMode && !isAdmin && currentView !== 'admin' && !sharedInvoice) {
     return (
       <div className="min-h-screen bg-brand-background dark:bg-brand-dark flex flex-col items-center justify-center p-8 text-center" dir="rtl">
