@@ -7,6 +7,17 @@ export interface QuizQuestion {
   points: number;
 }
 
+export interface AcademyVideo {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  duration: string;
+  points: number;
+  isCompleted: boolean;
+  thumbnail?: string;
+}
+
 export interface UserAccount {
   points: number;
   level: number;
@@ -16,9 +27,6 @@ export interface UserAccount {
 export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice' | 'quiz';
 export type TabMode = 'all' | 'changed' | 'fav';
 
-/**
- * Single table structure matching 'drugsfull'
- */
 export interface Drug {
   drug_no: string;           
   name_en: string;
@@ -31,10 +39,6 @@ export interface Drug {
   api_updated_at: string | null; 
   fetched_at?: string;           
   id?: string;
-  newPrice?: number;
-  oldPrice?: number;
-  nameEn?: string;
-  nameAr?: string;
 }
 
 export interface ExternalDrugItem {
@@ -59,42 +63,16 @@ export interface AdminStats {
   };
 }
 
-export interface LightDrug {
-  name: string;
-  price: number;
-  company: string;
-}
-
-export interface DeepMarketAnalysis {
-  reportDate: string;
-  marketSentiment: string;
-  volatilityScore: number;
-  executiveSummary: string;
-  buyOpportunities: Array<{
-    name: string;
-    reason: string;
-    urgency: string;
-  }>;
-  companyAnalysis: any;
-  shortageWarnings: string[];
-}
-
-export type SyncStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
-
-export interface SyncMetadata {
-  status: SyncStatus;
-  lastOffset: number;
-  totalFetched: number;
-  lastUpdate: string | null;
-}
-
-export interface AppNotification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'update';
-  timestamp: string;
-  isRead: boolean;
+export interface AdminConfig {
+  aiAnalysis: boolean;
+  marketCheck: boolean;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  maintenanceTime: string;
+  liveSync: boolean;
+  pointsPerVideo: number;
+  pointsPerQuiz: number;
+  strictMode: boolean;
 }
 
 export interface InvoiceItem {
@@ -108,11 +86,58 @@ export interface InvoiceItem {
   packSize: number;  
 }
 
+/**
+ * Added missing interface for simplified drug analysis.
+ */
+export interface LightDrug {
+  drug_no: string;
+  name_en: string;
+  price_new: number | null;
+}
+
+/**
+ * Added missing interface for AI-driven market analysis results.
+ */
+export interface DeepMarketAnalysis {
+  sentiment: string;
+  trend: string;
+  recommendation: string;
+}
+
+/**
+ * Added missing interface for Tawreed market availability data.
+ */
 export interface TawreedProduct {
   productId: string;
   productName: string;
-  stores: any[];
+  stores: string[];
   totalQty: number;
   avgDiscount: number | null;
   bestSale: number | null;
+}
+
+/**
+ * Added missing type for background sync process status.
+ */
+export type SyncStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
+
+/**
+ * Added missing interface for sync tracking metadata.
+ */
+export interface SyncMetadata {
+  status: SyncStatus;
+  lastOffset: number;
+  totalFetched: number;
+  lastUpdate: string | null;
+}
+
+/**
+ * Added missing interface for application-wide notifications.
+ */
+export interface AppNotification {
+  id: string;
+  type: 'info' | 'warning' | 'success' | 'update';
+  title: string;
+  message: string;
+  timestamp: string;
 }
