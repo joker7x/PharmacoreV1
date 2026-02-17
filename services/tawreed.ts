@@ -1,6 +1,6 @@
 
-import { TAWREED_BASE_URL } from '../constants';
-import { TawreedProduct } from '../types';
+import { TAWREED_BASE_URL } from '../constants.ts';
+import { TawreedProduct } from '../types.ts';
 
 /**
  * STRICT NAME NORMALIZATION

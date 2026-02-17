@@ -1,30 +1,42 @@
 
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+  points: number;
+}
+
+export interface UserAccount {
+  points: number;
+  level: number;
+  correctAnswers: number;
+}
+
+export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice' | 'quiz';
+export type TabMode = 'all' | 'changed' | 'fav';
+
 /**
  * Single table structure matching 'drugsfull'
  */
 export interface Drug {
-  drug_no: string;           // Primary Key
+  drug_no: string;           
   name_en: string;
   name_ar: string;
   company?: string;
   price_new: number | null;
   price_old: number | null;
-  pack_size?: number | null;  // Added for unit price calculation
+  pack_size?: number | null;  
   dosage_form?: string;
-  api_updated_at: string | null; // timestamptz (ISO string)
-  fetched_at?: string;           // Optional audit field
-  
-  // UI Support Helpers
+  api_updated_at: string | null; 
+  fetched_at?: string;           
   id?: string;
-
-  // Stats/Sync support fields (used in StatsView.tsx)
   newPrice?: number;
   oldPrice?: number;
   nameEn?: string;
   nameAr?: string;
 }
 
-// Fix for missing Exported member 'ExternalDrugItem' in services/api.ts
 export interface ExternalDrugItem {
   id: string;
   name: string;
@@ -34,7 +46,6 @@ export interface ExternalDrugItem {
   Date_updated: string;
 }
 
-// Fix for missing Exported member 'AdminStats' in services/api.ts and components/StatsView.tsx
 export interface AdminStats {
   totalDrugs: number;
   totalChanged: number;
@@ -48,14 +59,12 @@ export interface AdminStats {
   };
 }
 
-// Fix for missing Exported member 'LightDrug' in services/ai.ts
 export interface LightDrug {
   name: string;
   price: number;
   company: string;
 }
 
-// Fix for missing Exported member 'DeepMarketAnalysis' in services/ai.ts
 export interface DeepMarketAnalysis {
   reportDate: string;
   marketSentiment: string;
@@ -70,10 +79,8 @@ export interface DeepMarketAnalysis {
   shortageWarnings: string[];
 }
 
-// Fix for missing Exported member 'SyncStatus' in services/sync.ts
 export type SyncStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
 
-// Fix for missing Exported member 'SyncMetadata' in services/sync.ts
 export interface SyncMetadata {
   status: SyncStatus;
   lastOffset: number;
@@ -95,14 +102,11 @@ export interface InvoiceItem {
   drug_no?: string; 
   name: string;
   name_ar?: string;
-  unitPrice: number; // Calculated: price_new / pack_size
-  quantity: number;  // In units (not packs)
-  packPrice: number; // For reference
-  packSize: number;  // For reference
+  unitPrice: number; 
+  quantity: number;  
+  packPrice: number; 
+  packSize: number;  
 }
-
-export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice';
-export type TabMode = 'all' | 'changed' | 'fav';
 
 export interface TawreedProduct {
   productId: string;

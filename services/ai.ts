@@ -1,63 +1,61 @@
 
-import { GoogleGenAI } from "@google/genai";
-import { LightDrug, DeepMarketAnalysis } from "../types";
-import { checkDrugAvailability } from "./tawreed";
+import { GoogleGenAI, Type } from "@google/genai";
+import { LightDrug, DeepMarketAnalysis, QuizQuestion } from "../types.ts";
 
-export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress: (msg: string) => void): Promise<DeepMarketAnalysis & { volatilityScore: number }> => {
-    try {
-        // الاستخدام الصحيح للمكتبة حسب الدليل
-        // Fix: Use process.env.API_KEY directly as per guidelines
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const generateMedicalQuestion = async (): Promise<QuizQuestion> => {
+  const apiKey = (window as any).process?.env?.API_KEY || "";
+  if (!apiKey) {
+    return getFallbackQuestion();
+  }
 
-        onProgress('تحليل سلوكيات الشركات...');
-        
-        const prompt = `
-            Act as a Senior Pharmaceutical Market Strategist in Egypt.
-            Analyze the market behavior for these drugs: ${JSON.stringify(allDrugs.slice(0, 10))}
-            Provide a JSON report with: reportDate, marketSentiment, volatilityScore (0-100), executiveSummary (Arabic), 
-            buyOpportunities (name, reason in Arabic, urgency), companyAnalysis, and shortageWarnings.
-        `;
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: "Generate one challenging multiple-choice medical question for a pharmacist in Arabic. Format as JSON with: question, options (4), correctAnswerIndex (0-3), explanation, points (10-50).",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswerIndex: { type: Type.INTEGER },
+            explanation: { type: Type.STRING },
+            points: { type: Type.INTEGER }
+          },
+          required: ["question", "options", "correctAnswerIndex", "explanation", "points"]
+        }
+      }
+    });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: { 
-                responseMimeType: "application/json"
-            }
-        });
-
-        const text = response.text;
-        if(text) return JSON.parse(text);
-        throw new Error("AI returned empty");
-    } catch (e) {
-        console.error("Deep Scan Failed", e);
-        throw e;
-    }
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Gemini AI Error:", e);
+    return getFallbackQuestion();
+  }
 };
 
-export const analyzeSingleDrugStrategy = async (name: string, price: number, company: string, marketAvailability: string): Promise<any> => {
+const getFallbackQuestion = (): QuizQuestion => ({
+  question: "ما هو تصنيف دواء الميتفورمين (Metformin)؟",
+  options: ["خافض للضغط", "منظم للسكر", "مضاد حيوي", "مسكن آلام"],
+  correctAnswerIndex: 1,
+  explanation: "الميتفورمين هو دواء من فئة البيغوانيد يستخدم كخط أول في علاج السكري من النوع الثاني.",
+  points: 20
+});
+
+export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress: (msg: string) => void): Promise<DeepMarketAnalysis> => {
+    const apiKey = (window as any).process?.env?.API_KEY || "";
     try {
-        // Fix: Use process.env.API_KEY directly as per guidelines
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-        const prompt = `
-            Evaluate this drug for pharmacy inventory: ${name}, Price: ${price}, Company: ${company}.
-            Market Status: ${marketAvailability}.
-            Return JSON: { advice: "buy"|"sell"|"hold", reason: "Arabic string", riskLevel: "high"|"medium"|"low" }
-        `;
-
+        const ai = new GoogleGenAI({ apiKey });
+        onProgress('تحليل سلوكيات الشركات...');
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: { 
-                responseMimeType: "application/json" 
-            }
+            contents: `Analyze these drugs market sentiment: ${JSON.stringify(allDrugs.slice(0, 5))}. Return in Arabic JSON.`,
+            config: { responseMimeType: "application/json" }
         });
-
-        const text = response.text;
-        if(text) return JSON.parse(text);
-        throw new Error("AI Empty");
+        return JSON.parse(response.text || "{}");
     } catch (e) {
-        return { advice: "hold", reason: "الخدمة غير متوفرة حالياً", riskLevel: "low" };
+        throw new Error("Analysis Failed");
     }
 };

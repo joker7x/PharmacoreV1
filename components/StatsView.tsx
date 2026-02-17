@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart2, TrendingUp, TrendingDown, Package, Activity, ChevronLeft, PieChart, ArrowUpRight } from 'lucide-react';
@@ -10,6 +11,8 @@ interface StatsViewProps {
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
+  // Use any to bypass TypeScript errors for motion props
+  const MDiv = motion.div as any;
   const stats = useMemo(() => fetchAdminStats(drugs), [drugs]);
 
   const StatCard = ({ icon: Icon, title, value, subValue, color }: any) => (
@@ -24,7 +27,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
   );
 
   return (
-    <motion.div 
+    <MDiv 
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
@@ -69,7 +72,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
             const percentage = pOld > 0 ? ((pNew - pOld) / pOld * 100).toFixed(0) : '0';
             
             return (
-              <motion.div 
+              <MDiv 
                 key={idx} 
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -87,7 +90,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
                   </div>
                   <div className="text-[10px] text-slate-400 dark:text-zinc-400 font-bold">{pNew.toFixed(1)} ج.م</div>
                 </div>
-              </motion.div>
+              </MDiv>
             );
           })}
         </div>
@@ -96,19 +99,23 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
   );
 };
 
-const PriceRangeRow = ({ label, count, total, color }: any) => (
-  <div className="space-y-2.5">
-    <div className="flex justify-between text-[11px] font-black uppercase tracking-tight">
-      <span className="text-slate-500 dark:text-zinc-500">{label}</span>
-      <span className="text-slate-900 dark:text-white">{count} <span className="text-slate-400 font-bold dark:text-zinc-600">({total > 0 ? ((count/total)*100).toFixed(1) : 0}%)</span></span>
+const PriceRangeRow = ({ label, count, total, color }: any) => {
+  // Use any to bypass TypeScript errors for motion props
+  const MDiv = motion.div as any;
+  return (
+    <div className="space-y-2.5">
+      <div className="flex justify-between text-[11px] font-black uppercase tracking-tight">
+        <span className="text-slate-500 dark:text-zinc-500">{label}</span>
+        <span className="text-slate-900 dark:text-white">{count} <span className="text-slate-400 font-bold dark:text-zinc-600">({total > 0 ? ((count/total)*100).toFixed(1) : 0}%)</span></span>
+      </div>
+      <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+        <MDiv 
+          initial={{ width: 0 }}
+          animate={{ width: `${total > 0 ? (count/total)*100 : 0}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className={`h-full ${color}`} 
+        />
+      </div>
     </div>
-    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${total > 0 ? (count/total)*100 : 0}%` }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        className={`h-full ${color}`} 
-      />
-    </div>
-  </div>
-);
+  );
+};

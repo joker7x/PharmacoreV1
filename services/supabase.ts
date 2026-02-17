@@ -1,5 +1,6 @@
-import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE, BOT_USERNAME } from '../constants';
-import { Drug } from '../types';
+
+import { SUPABASE_URL, SUPABASE_KEY, MAIN_TABLE, BOT_USERNAME } from '../constants.ts';
+import { Drug } from '../types.ts';
 
 const headers = {
   'apikey': SUPABASE_KEY,
@@ -55,8 +56,8 @@ export const saveInvoice = async (invoiceData: any): Promise<string | null> => {
 
 export const createSecureShareLink = async (invoiceId: string): Promise<string | null> => {
   try {
-    const token = Math.random().toString(36).substring(2, 20); // Longer token
-    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour expiry
+    const token = Math.random().toString(36).substring(2, 20);
+    const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares`, {
       method: 'POST',
@@ -76,7 +77,6 @@ export const createSecureShareLink = async (invoiceId: string): Promise<string |
 
 export const validateShareToken = async (invoiceId: string, token: string): Promise<boolean> => {
   try {
-    // Check if the token exists, is not used, and matches the invoice
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/invoice_shares?invoice_id=eq.${invoiceId}&token=eq.${token}&select=*`,
       { headers }
@@ -86,18 +86,7 @@ export const validateShareToken = async (invoiceId: string, token: string): Prom
     if (data && data.length > 0) {
       const share = data[0];
       const isExpired = new Date(share.expires_at) < new Date();
-      
-      if (!isExpired) {
-        // Optional: Mark as used if business logic requires single-use
-        /*
-        await fetch(`${SUPABASE_URL}/rest/v1/invoice_shares?id=eq.${share.id}`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify({ is_used: true })
-        });
-        */
-        return true;
-      }
+      if (!isExpired) return true;
     }
     return false;
   } catch (e) { 

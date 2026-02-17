@@ -1,108 +1,68 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Pharma Core Premium</title>
+  <title>Pharma Core</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    window.process = { env: { API_KEY: "" } };
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           colors: {
             brand: {
-              primary: '#2563eb',
-              secondary: '#6366f1',
-              accent: '#10b981',
-              danger: '#f43f5e',
-              background: '#f8fafc',
-              dark: '#09090b',
+              primary: '#3b82f6',
+              dark: '#050505',
+              surface: '#111113',
+              accent: '#6366f1'
             }
-          },
-          borderRadius: {
-            '4xl': '2rem',
-            '5xl': '2.5rem',
           }
         }
       }
     }
   </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
-    
-    :root { 
-      --brand-blue: #2563eb; 
-      --brand-emerald: #10b981; 
-      --brand-rose: #f43f5e; 
-    }
-
-    * {
-      -webkit-tap-highlight-color: transparent;
-      outline: none;
-      scrollbar-width: none;
-    }
-    
-    *::-webkit-scrollbar { display: none; }
-
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
     body { 
       margin: 0; 
       padding: 0; 
       font-family: 'IBM Plex Sans Arabic', sans-serif; 
-      background-color: #f8fafc; 
-      color: #0f172a; 
-      overflow-x: hidden; 
-      overscroll-behavior-y: none;
-      -webkit-font-smoothing: antialiased;
+      background-color: #050505; 
+      color: #fafafa;
       direction: rtl;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
     }
-
-    .dark body { background-color: #09090b; color: #fafafa; }
-    
-    .glass-effect { 
-      background: rgba(255, 255, 255, 0.7); 
-      backdrop-filter: blur(24px) saturate(180%); 
-      -webkit-backdrop-filter: blur(24px) saturate(180%); 
-      border: 1px solid rgba(255, 255, 255, 0.3);
+    #root { height: 100vh; width: 100vw; overflow-y: auto; overflow-x: hidden; }
+    .terminal-container {
+      height: 100vh; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      background: #050505; 
+      flex-direction: column; 
+      gap: 24px;
     }
-    
-    .dark .glass-effect { 
-      background: rgba(18, 18, 20, 0.8); 
-      border: 1px solid rgba(255, 255, 255, 0.05); 
+    .terminal-loader {
+      width: 40px; 
+      height: 40px; 
+      border: 2px solid rgba(59, 130, 246, 0.1); 
+      border-top-color: #3b82f6; 
+      border-radius: 50%; 
+      animation: spin 0.6s linear infinite;
     }
-    
-    .premium-card { 
-      background: white; 
-      border: 1px solid rgba(226, 232, 240, 0.8); 
-      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.03); 
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .terminal-text {
+      font-size: 10px; 
+      font-weight: 700; 
+      color: #3b82f6; 
+      letter-spacing: 0.3em; 
+      text-transform: uppercase;
     }
-    
-    .dark .premium-card { 
-      background: #141416; 
-      border: 1px solid rgba(255, 255, 255, 0.04); 
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-    }
-
-    .active-scale:active { transform: scale(0.96); }
-
-    .loading-shimmer { 
-      background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.1) 50%, transparent 75%); 
-      background-size: 200% 100%; 
-      animation: shimmer 1.5s infinite linear; 
-    }
-    
-    @keyframes shimmer { 
-      0% { background-position: -200% 0; } 
-      100% { background-position: 200% 0; } 
-    }
-
-    .text-gradient {
-      background: linear-gradient(135deg, #2563eb, #6366f1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
   <script type="importmap">
 {
@@ -110,19 +70,25 @@
     "react": "https://esm.sh/react@18.3.1",
     "react-dom": "https://esm.sh/react-dom@18.3.1",
     "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
     "lucide-react": "https://esm.sh/lucide-react@0.460.0?deps=react@18.3.1",
     "framer-motion": "https://esm.sh/framer-motion@11.11.17?deps=react@18.3.1",
     "@google/genai": "https://esm.sh/@google/genai@1.30.1",
-    "react/": "https://esm.sh/react@18.3.1/",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
     "html5-qrcode": "https://esm.sh/html5-qrcode@2.3.8",
-    "jspdf": "https://esm.sh/jspdf@2.5.1"
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
 }
 </script>
 </head>
-<body class="antialiased selection:bg-blue-100 dark:selection:bg-blue-900">
-  <div id="root"></div>
+<body class="dark antialiased">
+  <div id="root">
+    <div class="terminal-container">
+      <div class="terminal-loader"></div>
+      <div class="terminal-text">Booting Core System...</div>
+    </div>
+  </div>
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>
