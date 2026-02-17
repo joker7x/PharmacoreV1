@@ -95,7 +95,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
           })}
         </div>
       </div>
-    </motion.div>
+    </MDiv>
   );
 };
 
