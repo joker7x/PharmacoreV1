@@ -6,14 +6,15 @@ import { motion } from 'framer-motion';
 
 interface TabFilterProps { current: TabMode; onChange: (mode: TabMode) => void; }
 
-export const TabFilter: React.FC<TabFilterProps> = ({ current, onChange }) => {
+const tabs: { id: TabMode; label: string; icon: React.ReactNode }[] = [
+  { id: 'all', label: 'الكل', icon: <LayoutGrid size={18} /> },
+  { id: 'changed', label: 'تغييرات', icon: <TrendingUp size={18} /> },
+  { id: 'fav', label: 'المفضلة', icon: <Star size={18} /> },
+];
+
+export const TabFilter: React.FC<TabFilterProps> = React.memo(({ current, onChange }) => {
   // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
-  const tabs: { id: TabMode; label: string; icon: React.ReactNode }[] = [
-    { id: 'all', label: 'الكل', icon: <LayoutGrid size={18} /> },
-    { id: 'changed', label: 'تغييرات', icon: <TrendingUp size={18} /> },
-    { id: 'fav', label: 'المفضلة', icon: <Star size={18} /> },
-  ];
 
   return (
     <div className="w-full bg-slate-100 dark:bg-zinc-900 rounded-[22px] p-1 flex items-center border border-slate-200 dark:border-white/5">
@@ -43,4 +44,4 @@ export const TabFilter: React.FC<TabFilterProps> = ({ current, onChange }) => {
       })}
     </div>
   );
-};
+});

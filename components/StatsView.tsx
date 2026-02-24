@@ -1,30 +1,57 @@
 
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart2, TrendingUp, TrendingDown, Package, Activity, ChevronLeft, PieChart, ArrowUpRight } from 'lucide-react';
+import { BarChart2, TrendingUp, TrendingDown, Package, Activity, ChevronLeft, PieChart as PieChartIcon, ArrowUpRight, Building2, Percent } from 'lucide-react';
 import { Drug, AdminStats } from '../types.ts';
 import { fetchAdminStats } from '../services/api.ts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface StatsViewProps {
   drugs: Drug[];
   onBack: () => void;
 }
 
+const StatCard = ({ icon: Icon, title, value, subValue, color }: any) => (
+  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[32px] border border-slate-100 dark:border-white/10 shadow-sm">
+    <div className={`w-10 h-10 rounded-2xl ${color} flex items-center justify-center mb-5 text-white shadow-lg shadow-current/10`}>
+      <Icon size={20} />
+    </div>
+    <div className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{title}</div>
+    <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{value}</div>
+    {subValue && <div className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 mt-1">{subValue}</div>}
+  </div>
+);
+
 export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
-  // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
   const stats = useMemo(() => fetchAdminStats(drugs), [drugs]);
 
-  const StatCard = ({ icon: Icon, title, value, subValue, color }: any) => (
-    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[32px] border border-slate-100 dark:border-white/10 shadow-sm">
-      <div className={`w-10 h-10 rounded-2xl ${color} flex items-center justify-center mb-5 text-white shadow-lg shadow-current/10`}>
-        <Icon size={20} />
-      </div>
-      <div className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{title}</div>
-      <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{value}</div>
-      {subValue && <div className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 mt-1">{subValue}</div>}
-    </div>
-  );
+  const topCompanies = useMemo(() => {
+    const counts: Record<string, number> = {};
+    drugs.forEach(d => {
+      const company = d.company?.trim();
+      if (company && company !== '-' && company !== 'Unknown') {
+        counts[company] = (counts[company] || 0) + 1;
+      }
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name: name.substring(0, 15) + (name.length > 15 ? '...' : ''), count }));
+  }, [drugs]);
+
+  const inflationRate = useMemo(() => {
+    const changed = drugs.filter(d => d.price_new !== d.price_old && d.price_old && d.price_old > 0 && d.price_new && d.price_new > d.price_old);
+    if (changed.length === 0) return 0;
+    const totalIncrease = changed.reduce((sum, d) => sum + ((d.price_new! - d.price_old!) / d.price_old!), 0);
+    return (totalIncrease / changed.length) * 100;
+  }, [drugs]);
+
+  const pieData = [
+    { name: 'أقل من 50', value: stats.priceRanges.low, color: '#10b981' },
+    { name: '50 - 200', value: stats.priceRanges.mid, color: '#3b82f6' },
+    { name: 'أكثر من 200', value: stats.priceRanges.high, color: '#f43f5e' },
+  ];
 
   return (
     <MDiv 
@@ -38,26 +65,76 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
           <ChevronLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white">التحليلات</h1>
-          <p className="text-[11px] text-slate-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Market Overview</p>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-white">تحليل السوق</h1>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Advanced Market Analytics</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <StatCard icon={Package} title="إجمالي الأصناف" value={stats.totalDrugs.toLocaleString()} color="bg-blue-600" />
         <StatCard icon={Activity} title="أصناف متغيرة" value={stats.totalChanged.toLocaleString()} subValue="آخر 30 يوم" color="bg-indigo-600" />
       </div>
 
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <StatCard icon={Percent} title="متوسط التضخم" value={`+${inflationRate.toFixed(1)}%`} subValue="للأصناف المتغيرة" color="bg-rose-500" />
+        <StatCard icon={Building2} title="الشركات النشطة" value={Object.keys(topCompanies).length > 0 ? "5+" : "0"} subValue="في السوق المصري" color="bg-emerald-500" />
+      </div>
+
       <div className="bg-white dark:bg-zinc-900 p-8 rounded-[40px] border border-slate-100 dark:border-white/10 shadow-sm mb-6">
         <h3 className="text-xs font-black text-slate-400 dark:text-zinc-500 mb-6 flex items-center gap-2 uppercase tracking-widest">
-          <PieChart size={14} className="text-blue-500" /> توزيع النطاق السعري
+          <PieChartIcon size={14} className="text-blue-500" /> التوزيع السعري
         </h3>
-        <div className="space-y-6">
+        <div className="h-48 w-full mb-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+                stroke="none"
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+                itemStyle={{ fontWeight: 'bold' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="space-y-4">
           <PriceRangeRow label="أقل من 50 ج.م" count={stats.priceRanges.low} total={stats.totalDrugs} color="bg-emerald-500" />
           <PriceRangeRow label="50 - 200 ج.م" count={stats.priceRanges.mid} total={stats.totalDrugs} color="bg-blue-500" />
           <PriceRangeRow label="أكثر من 200 ج.م" count={stats.priceRanges.high} total={stats.totalDrugs} color="bg-rose-500" />
         </div>
       </div>
+
+      {topCompanies.length > 0 && (
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[40px] border border-slate-100 dark:border-white/10 shadow-sm mb-6">
+          <h3 className="text-xs font-black text-slate-400 dark:text-zinc-500 mb-6 flex items-center gap-2 uppercase tracking-widest">
+            <Building2 size={14} className="text-indigo-500" /> أكبر الشركات (حسب عدد الأصناف)
+          </h3>
+          <div className="h-64 w-full" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topCompanies} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'right' }}
+                  itemStyle={{ fontWeight: 'bold' }}
+                />
+                <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 8, 8]} barSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/10 text-right overflow-hidden relative shadow-2xl">
         <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/10 blur-3xl -ml-16 -mt-16" />
@@ -100,7 +177,6 @@ export const StatsView: React.FC<StatsViewProps> = ({ drugs, onBack }) => {
 };
 
 const PriceRangeRow = ({ label, count, total, color }: any) => {
-  // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
   return (
     <div className="space-y-2.5">

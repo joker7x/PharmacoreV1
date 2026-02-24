@@ -12,6 +12,8 @@ interface DrugCardProps {
   index: number;
 }
 
+const dateFormatter = new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'short' });
+
 export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
   const MDiv = motion.div as any;
   const pNew = drug.price_new !== null ? Number(drug.price_new) : null;
@@ -22,7 +24,7 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'محدث الآن';
     const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'short' }).format(date);
+    return dateFormatter.format(date);
   };
 
   return (

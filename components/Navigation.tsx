@@ -9,16 +9,16 @@ interface BottomNavigationProps {
   onNavigate: (view: AppView) => void;
 }
 
+const tabs: { id: AppView; label: string; icon: React.ElementType }[] = [
+  { id: 'home', label: 'الرئيسية', icon: Home },
+  { id: 'quiz', label: 'الأكاديمية', icon: Trophy },
+  { id: 'stats', label: 'تحليل السوق', icon: BarChart2 },
+  { id: 'settings', label: 'المزيد', icon: MoreHorizontal },
+];
+
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate }) => {
   // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
-  const tabs: { id: AppView; label: string; icon: React.ElementType }[] = [
-    { id: 'home', label: 'الرئيسية', icon: Home },
-    { id: 'quiz', label: 'الأكاديمية', icon: Trophy },
-    { id: 'invoice', label: 'الفاتورة', icon: FileText },
-    { id: 'stats', label: 'السوق', icon: BarChart2 },
-    { id: 'settings', label: 'المزيد', icon: MoreHorizontal },
-  ];
 
   const handleNavClick = (view: AppView) => {
     if (view === 'home' && currentView === 'home') {

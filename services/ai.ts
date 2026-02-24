@@ -7,8 +7,8 @@ import { QuizQuestion, LightDrug, DeepMarketAnalysis } from "../types.ts";
  * Follows the correct initialization and content generation patterns.
  */
 export const generateMedicalQuestion = async (): Promise<QuizQuestion> => {
-  // Directly access process.env.API_KEY as per guidelines.
-  const apiKey = process.env.API_KEY;
+  // Directly access process.env.GEMINI_API_KEY as per guidelines.
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return getFallbackQuestion();
   }
@@ -56,8 +56,8 @@ const getFallbackQuestion = (): QuizQuestion => ({
  * Utilizes a structured response schema for consistent results.
  */
 export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress: (msg: string) => void): Promise<DeepMarketAnalysis> => {
-    // Directly access process.env.API_KEY as per guidelines.
-    const apiKey = process.env.API_KEY;
+    // Directly access process.env.GEMINI_API_KEY as per guidelines.
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("Missing API Key");
     }
@@ -66,7 +66,7 @@ export const analyzeFullMarketDeeply = async (allDrugs: LightDrug[], onProgress:
         const ai = new GoogleGenAI({ apiKey });
         onProgress('تحليل سلوكيات الشركات...');
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3.1-pro-preview',
             contents: `Analyze these drugs market sentiment: ${JSON.stringify(allDrugs.slice(0, 5))}. Return in Arabic JSON.`,
             config: { 
               responseMimeType: "application/json",

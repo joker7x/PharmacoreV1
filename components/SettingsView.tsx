@@ -11,9 +11,10 @@ interface SettingsViewProps {
   onBack: () => void;
   isAdmin?: boolean;
   onOpenAdmin: () => void;
+  onOpenInvoice: () => void;
 }
 
-const SettingSection = ({ title, children }: { title: string, children?: React.ReactNode }) => (
+const SettingSection = React.memo(({ title, children }: { title: string, children?: React.ReactNode }) => (
   <div className="mb-6">
     <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3 px-4 flex items-center gap-2">
       {title}
@@ -22,9 +23,9 @@ const SettingSection = ({ title, children }: { title: string, children?: React.R
       {children}
     </div>
   </div>
-);
+));
 
-const SettingItem = ({ icon: Icon, label, action, isLast = false, valueLabel, color = "blue" }: any) => {
+const SettingItem = React.memo(({ icon: Icon, label, action, isLast = false, valueLabel, color = "blue" }: any) => {
   // Use any to bypass TypeScript errors for motion props
   const MButton = motion.button as any;
   return (
@@ -45,7 +46,7 @@ const SettingItem = ({ icon: Icon, label, action, isLast = false, valueLabel, co
         </div>
     </MButton>
   );
-};
+});
 
 const PolicyModal = ({ title, content, onClose }: { title: string, content: string, onClose: () => void }) => {
   // Use any to bypass TypeScript errors for motion props
@@ -65,7 +66,7 @@ const PolicyModal = ({ title, content, onClose }: { title: string, content: stri
   );
 };
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack, isAdmin, onOpenAdmin }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack, isAdmin, onOpenAdmin, onOpenInvoice }) => {
   // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
   const [modal, setModal] = useState<{ title: string, content: string } | null>(null);
@@ -91,6 +92,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
              <SettingItem icon={ShieldAlert} label="لوحة تحكم النظام" color="blue" action={onOpenAdmin} isLast />
           </SettingSection>
         )}
+
+        <SettingSection title="أدوات الصيدلية">
+            <SettingItem icon={FileText} label="منشئ الفواتير" color="emerald" action={onOpenInvoice} isLast />
+        </SettingSection>
 
         {user && (
           <div className="mb-8 p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[40px] text-white shadow-2xl shadow-blue-500/30 relative overflow-hidden">

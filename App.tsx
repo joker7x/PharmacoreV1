@@ -17,11 +17,13 @@ import { getGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
 const App: React.FC = () => {
   const MDiv = motion.div as any;
-  const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [allDrugs, setAllDrugs] = useState<Drug[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [mode, setMode] = useState<TabMode>('all');
+  const [searchInput, setSearchInput] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  const [visibleCount, setVisibleCount] = useState<number>(100);
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -67,7 +69,7 @@ const App: React.FC = () => {
 
         if (configRes.status === 'fulfilled' && configRes.value) setConfig({...config, ...configRes.value});
         if (drugsRes.status === 'fulfilled' && drugsRes.value) {
-          setDrugs(drugsRes.value);
+          setAllDrugs(drugsRes.value);
         }
       } catch (e) {
         console.warn("Bootstrap process finished with warnings.");
@@ -80,38 +82,58 @@ const App: React.FC = () => {
     bootstrap();
   }, []);
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearch(searchInput);
+      setVisibleCount(100);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [mode]);
+
+  const filteredDrugs = React.useMemo(() => {
+    let filtered = allDrugs;
+    if (mode === 'changed') filtered = filtered.filter(d => d.price_new !== d.price_old);
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = filtered.filter(d => 
+        d.name_en?.toLowerCase().includes(s) || 
+        d.name_ar?.includes(s) ||
+        d.drug_no?.includes(s)
+      );
+    }
+    return filtered;
+  }, [allDrugs, mode, search]);
+
   const loadData = useCallback(async () => {
     if (initialLoading) return;
     setLoading(true);
     try {
       const results = await fetchDrugBatchFromAPI(0);
-      let filtered = results;
-      if (mode === 'changed') filtered = results.filter(d => d.price_new !== d.price_old);
-      if (search) {
-        const s = search.toLowerCase();
-        filtered = filtered.filter(d => 
-          d.name_en?.toLowerCase().includes(s) || 
-          d.name_ar?.includes(s) ||
-          d.drug_no?.includes(s)
-        );
-      }
-      setDrugs(filtered);
+      setAllDrugs(results);
     } catch (e) {
       console.error("Data load failed");
     } finally {
       setLoading(false);
     }
-  }, [mode, search, initialLoading]);
+  }, [initialLoading]);
 
   useEffect(() => {
-    if (!initialLoading && currentView === 'home') loadData();
-  }, [mode, search, initialLoading, currentView, loadData]);
+    if (!initialLoading && currentView === 'home' && allDrugs.length === 0) {
+      loadData();
+    }
+  }, [initialLoading, currentView, loadData, allDrugs.length]);
 
   const addPoints = (p: number) => {
     const newPoints = points + p;
     setPoints(newPoints);
     localStorage.setItem('core_points', newPoints.toString());
   };
+
+  const handleToggleFavorite = useCallback(() => {}, []);
 
   if (initialLoading) {
     return (
@@ -124,9 +146,9 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (currentView) {
-      case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={drugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={null} userPoints={points} setPoints={addPoints}/>;
-      case 'settings': return <SettingsView user={null} darkMode={false} toggleDarkMode={() => {}} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} />;
-      case 'stats': return <StatsView drugs={drugs} onBack={() => setCurrentView('home')} />;
+      case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={allDrugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={null} userPoints={points} setPoints={addPoints}/>;
+      case 'settings': return <SettingsView user={null} darkMode={false} toggleDarkMode={() => {}} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} />;
+      case 'stats': return <StatsView drugs={allDrugs} onBack={() => setCurrentView('home')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
       case 'quiz': return <PharmaQuiz onAddPoints={addPoints} currentPoints={points} config={config} />;
       default: return (
@@ -161,8 +183,8 @@ const App: React.FC = () => {
             <input 
               type="text" 
               placeholder="ابحث عن دواء، شركة، أو باركود..." 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
+              value={searchInput} 
+              onChange={(e) => setSearchInput(e.target.value)} 
               className="w-full bg-white border border-slate-200 rounded-[28px] px-8 py-6 pr-16 text-slate-800 text-lg font-bold outline-none focus:ring-4 ring-blue-500/10 focus:border-blue-500 transition-all text-right shadow-sm" 
             />
           </div>
@@ -178,26 +200,36 @@ const App: React.FC = () => {
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">قائمة الأدوية</span>
                </div>
                <div className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                  {drugs.length} صنف متاح
+                  {filteredDrugs.length} صنف متاح
                </div>
             </div>
 
             <AnimatePresence mode="popLayout">
-              {loading ? (
+              {loading && allDrugs.length === 0 ? (
                 <div className="py-24 flex flex-col items-center gap-6">
                   <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
                   <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">مزامنة البيانات الحية</p>
                 </div>
-              ) : drugs.length === 0 ? (
+              ) : filteredDrugs.length === 0 ? (
                 <MDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-24 text-center bg-slate-50 rounded-[48px] border border-dashed border-slate-200">
                   <Package2 size={48} className="mx-auto text-slate-300 mb-6" />
                   <h3 className="text-lg font-black text-slate-500 mb-2">لم نجد ما تبحث عنه</h3>
                   <p className="text-xs text-slate-400 font-bold">حاول البحث باستخدام اسم دقيق</p>
                 </MDiv>
               ) : (
-                drugs.map((drug, idx) => (
-                  <DrugCard key={drug.drug_no || idx} drug={drug} index={idx} isFavorite={false} onToggleFavorite={() => {}} onOpenInfo={setSelectedDrug} />
-                ))
+                <>
+                  {filteredDrugs.slice(0, visibleCount).map((drug, idx) => (
+                    <DrugCard key={drug.drug_no || idx} drug={drug} index={idx} isFavorite={false} onToggleFavorite={handleToggleFavorite} onOpenInfo={setSelectedDrug} />
+                  ))}
+                  {visibleCount < filteredDrugs.length && (
+                    <button 
+                      onClick={() => setVisibleCount(v => v + 100)} 
+                      className="w-full py-4 bg-slate-100 dark:bg-zinc-800 rounded-2xl text-slate-500 dark:text-slate-400 font-bold mt-4 active:scale-95 transition-transform"
+                    >
+                      عرض المزيد
+                    </button>
+                  )}
+                </>
               )}
             </AnimatePresence>
           </div>

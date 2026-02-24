@@ -184,7 +184,7 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
     );
 };
 
-const TabItem = ({ active, onClick, icon: Icon, label, color }: any) => {
+const TabItem = React.memo(({ active, onClick, icon: Icon, label, color }: any) => {
   const colorMap: any = {
     blue: 'text-blue-600 dark:text-blue-400',
     emerald: 'text-emerald-600 dark:text-emerald-400',
@@ -199,11 +199,11 @@ const TabItem = ({ active, onClick, icon: Icon, label, color }: any) => {
       <Icon size={16} strokeWidth={active ? 3 : 2} /> {label}
     </button>
   );
-};
+});
 
-const InfoRow = ({ label, value }: { label: string, value: any }) => (
+const InfoRow = React.memo(({ label, value }: { label: string, value: any }) => (
   <div className="flex items-center justify-between text-[12px]">
     <span className="font-bold text-slate-400 dark:text-zinc-500">{label}</span>
     <span className="font-black text-slate-800 dark:text-slate-200">{value || '---'}</span>
   </div>
-);
+));
