@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Coins, Package2, ShieldCheck, Zap, LayoutGrid, Info } from 'lucide-react';
+import { Search, Package2, ShieldCheck, Zap, LayoutGrid, Info } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fetchDrugBatchFromAPI } from './services/api.ts';
 import { Drug, TabMode, AppView, AdminConfig } from './types.ts';
@@ -12,7 +12,6 @@ import { DrugIntelligenceModal } from './components/DrugIntelligenceModal.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { AdminView } from './components/AdminView.tsx';
 import { InvoiceBuilder } from './components/InvoiceBuilder.tsx';
-import { PharmaQuiz } from './components/PharmaQuiz.tsx';
 import { getGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
 const App: React.FC = () => {
@@ -23,11 +22,10 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<TabMode>('all');
   const [searchInput, setSearchInput] = useState<string>('');
   const [search, setSearch] = useState<string>('');
-  const [visibleCount, setVisibleCount] = useState<number>(100);
+  const [visibleCount, setVisibleCount] = useState<number>(500);
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [points, setPoints] = useState<number>(0);
   
   const [config, setConfig] = useState<AdminConfig>({
     aiAnalysis: true, 
@@ -36,8 +34,6 @@ const App: React.FC = () => {
     maintenanceMessage: "", 
     maintenanceTime: "", 
     liveSync: true,
-    pointsPerVideo: 50,
-    pointsPerQuiz: 20,
     strictMode: true
   });
 
@@ -45,9 +41,6 @@ const App: React.FC = () => {
     const bootstrap = async () => {
       const timer = setTimeout(() => setInitialLoading(false), 500);
       try {
-        const storedPoints = localStorage.getItem('core_points');
-        if (storedPoints) setPoints(parseInt(storedPoints));
-
         const tg = (window as any).Telegram?.WebApp;
         if (tg) {
           tg.ready();
@@ -85,13 +78,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setSearch(searchInput);
-      setVisibleCount(100);
+      setVisibleCount(500);
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchInput]);
 
   useEffect(() => {
-    setVisibleCount(100);
+    setVisibleCount(500);
   }, [mode]);
 
   const filteredDrugs = React.useMemo(() => {
@@ -127,12 +120,6 @@ const App: React.FC = () => {
     }
   }, [initialLoading, currentView, loadData, allDrugs.length]);
 
-  const addPoints = (p: number) => {
-    const newPoints = points + p;
-    setPoints(newPoints);
-    localStorage.setItem('core_points', newPoints.toString());
-  };
-
   const handleToggleFavorite = useCallback(() => {}, []);
 
   if (initialLoading) {
@@ -146,11 +133,10 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (currentView) {
-      case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={allDrugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={null} userPoints={points} setPoints={addPoints}/>;
+      case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={allDrugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={null} />;
       case 'settings': return <SettingsView user={null} darkMode={false} toggleDarkMode={() => {}} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} />;
       case 'stats': return <StatsView drugs={allDrugs} onBack={() => setCurrentView('home')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
-      case 'quiz': return <PharmaQuiz onAddPoints={addPoints} currentPoints={points} config={config} />;
       default: return (
         <div className="pt-16 px-6 max-w-lg mx-auto w-full pb-32">
           <header className="flex items-center justify-between mb-12">
@@ -166,16 +152,6 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
-            <MDiv 
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentView('quiz')} 
-              className="premium-card px-4 py-2.5 rounded-2xl flex items-center gap-3 cursor-pointer"
-            >
-              <div className="p-1.5 bg-amber-500/10 rounded-lg">
-                <Coins size={16} className="text-amber-600" />
-              </div>
-              <span className="text-xl font-black text-slate-900">{points}</span>
-            </MDiv>
           </header>
 
           <div className="relative mb-8 group">
@@ -223,7 +199,7 @@ const App: React.FC = () => {
                   ))}
                   {visibleCount < filteredDrugs.length && (
                     <button 
-                      onClick={() => setVisibleCount(v => v + 100)} 
+                      onClick={() => setVisibleCount(v => v + 500)} 
                       className="w-full py-4 bg-slate-100 dark:bg-zinc-800 rounded-2xl text-slate-500 dark:text-slate-400 font-bold mt-4 active:scale-95 transition-transform"
                     >
                       عرض المزيد

@@ -1,30 +1,5 @@
 
-export interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswerIndex: number;
-  explanation: string;
-  points: number;
-}
-
-export interface AcademyVideo {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  duration: string;
-  points: number;
-  isCompleted: boolean;
-  thumbnail?: string;
-}
-
-export interface UserAccount {
-  points: number;
-  level: number;
-  correctAnswers: number;
-}
-
-export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice' | 'quiz';
+export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice';
 export type TabMode = 'all' | 'changed' | 'fav';
 
 export interface Drug {
@@ -70,8 +45,6 @@ export interface AdminConfig {
   maintenanceMessage: string;
   maintenanceTime: string;
   liveSync: boolean;
-  pointsPerVideo: number;
-  pointsPerQuiz: number;
   strictMode: boolean;
 }
 

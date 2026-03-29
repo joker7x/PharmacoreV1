@@ -15,8 +15,6 @@ interface AdminViewProps {
   config: AdminConfig;
   onUpdateConfig: (config: Partial<AdminConfig>) => void;
   currentUser: any;
-  userPoints: number;
-  setPoints: (p: number) => void;
 }
 
 const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab }: any) => {
@@ -30,9 +28,9 @@ const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab }: any) => {
   );
 };
 
-export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config, onUpdateConfig, userPoints, setPoints }) => {
+export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config, onUpdateConfig, currentUser }) => {
   const MDiv = motion.div as any;
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'economy' | 'users' | 'bot' | 'system'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'bot' | 'system'>('dashboard');
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [strictAuth, setStrictAuth] = useState(false);
@@ -50,15 +48,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
     } catch (e) {
       console.error("Failed to sync config to cloud", e);
     }
-  };
-
-  const handleManualPoints = (amount: number) => {
-    if (!strictAuth) {
-      alert("⚠️ وضع التحقق الصارم غير مفعل! يرجى تفعيل 'وضع المحقق' أولاً لإجراء تعديلات حساسة.");
-      return;
-    }
-    setPoints(amount);
-    addLog(`تعديل نقاط يدوي: ${amount > 0 ? '+' : ''}${amount}`);
   };
 
   useEffect(() => {
@@ -84,7 +73,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
       <div className="sticky top-0 z-50 bg-[#f8fafc]/90 backdrop-blur-md pb-6 pt-2">
         <div className="premium-card rounded-3xl p-1.5 flex items-center overflow-x-auto no-scrollbar">
           <TabButton id="dashboard" label="الرئيسية" icon={Activity} activeTab={activeTab} setActiveTab={setActiveTab} />
-          <TabButton id="economy" label="الاقتصاد" icon={Coins} activeTab={activeTab} setActiveTab={setActiveTab} />
           <TabButton id="users" label="الأعضاء" icon={Users} activeTab={activeTab} setActiveTab={setActiveTab} />
           <TabButton id="system" label="النظام" icon={Terminal} activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
@@ -116,45 +104,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
                        <span className="text-slate-400 font-black">{log.time}</span>
                     </div>
                   )) : <div className="text-center py-4 text-slate-300 font-bold text-xs uppercase tracking-widest">No Recent Activity</div>}
-               </div>
-            </div>
-          </MDiv>
-        )}
-
-        {activeTab === 'economy' && (
-          <MDiv key="economy" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-            <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl">
-               <div className="flex justify-between items-center mb-10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white"><Coins size={24} /></div>
-                    <h3 className="text-lg font-black text-slate-800">إدارة النقاط (Strict)</h3>
-                  </div>
-                  <button onClick={() => { setStrictAuth(!strictAuth); addLog(`تغيير وضع التحقق: ${!strictAuth ? 'نشط' : 'متوقف'}`); }} className={`px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-2 transition-all ${strictAuth ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-100 text-slate-400'}`}>
-                    <Fingerprint size={14} /> {strictAuth ? 'وضع المحقق مفعل' : 'تفعيل التحقق'}
-                  </button>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">نقاط المشاهدة</label>
-                    <input type="number" value={config.pointsPerVideo} onChange={e => saveConfig({pointsPerVideo: Number(e.target.value)})} className="bg-transparent text-2xl font-black text-slate-900 outline-none w-full" />
-                  </div>
-                  <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">نقاط الاختبار</label>
-                    <input type="number" value={config.pointsPerQuiz} onChange={e => saveConfig({pointsPerQuiz: Number(e.target.value)})} className="bg-transparent text-2xl font-black text-slate-900 outline-none w-full" />
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-                    <AlertTriangle className="text-blue-600 shrink-0" size={20} />
-                    <p className="text-[11px] font-bold text-blue-700 leading-relaxed">تعديل النقاط اليدوي يتطلب تفعيل "وضع المحقق". جميع التغييرات يتم تسجيلها فوراً لضمان عدم التلاعب.</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => handleManualPoints(500)} className="py-4 bg-white border border-slate-200 rounded-2xl font-black text-xs text-slate-700 active:scale-95 shadow-sm hover:border-blue-500 transition-all">+500</button>
-                    <button onClick={() => handleManualPoints(1000)} className="py-4 bg-white border border-slate-200 rounded-2xl font-black text-xs text-slate-700 active:scale-95 shadow-sm hover:border-blue-500 transition-all">+1000</button>
-                    <button onClick={() => handleManualPoints(-500)} className="py-4 bg-white border border-slate-200 rounded-2xl font-black text-xs text-rose-600 active:scale-95 shadow-sm hover:border-rose-500 transition-all">-500</button>
-                  </div>
                </div>
             </div>
           </MDiv>

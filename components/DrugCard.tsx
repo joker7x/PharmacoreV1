@@ -40,7 +40,7 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{drug.company || 'المؤسسة الدوائية'}</span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 truncate group-hover:text-blue-600 transition-colors">
+            <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 group-hover:text-blue-600 transition-colors">
               {drug.name_en}
             </h3>
             <p className="text-[13px] font-bold text-slate-500">

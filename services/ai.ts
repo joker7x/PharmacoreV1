@@ -1,55 +1,8 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { QuizQuestion, LightDrug, DeepMarketAnalysis } from "../types.ts";
+import { LightDrug, DeepMarketAnalysis } from "../types.ts";
 
-/**
- * Generates a medical quiz question using Gemini AI.
- * Follows the correct initialization and content generation patterns.
- */
-export const generateMedicalQuestion = async (): Promise<QuizQuestion> => {
-  // Directly access process.env.GEMINI_API_KEY as per guidelines.
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return getFallbackQuestion();
-  }
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: "Generate one challenging multiple-choice medical question for a pharmacist in Arabic. Format as JSON with: question, options (4), correctAnswerIndex (0-3), explanation, points (10-50).",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            correctAnswerIndex: { type: Type.INTEGER },
-            explanation: { type: Type.STRING },
-            points: { type: Type.INTEGER }
-          },
-          required: ["question", "options", "correctAnswerIndex", "explanation", "points"]
-        }
-      }
-    });
-
-    // Access response.text directly (not a method).
-    const jsonStr = response.text?.trim() || "{}";
-    return JSON.parse(jsonStr);
-  } catch (e) {
-    console.error("Gemini AI Quiz Generation Error:", e);
-    return getFallbackQuestion();
-  }
-};
-
-const getFallbackQuestion = (): QuizQuestion => ({
-  question: "ما هو تصنيف دواء الميتفورمين (Metformin)؟",
-  options: ["خافض للضغط", "منظم للسكر", "مضاد حيوي", "مسكن آلام"],
-  correctAnswerIndex: 1,
-  explanation: "الميتفورمين هو دواء من فئة البيغوانيد يستخدم كخط أول في علاج السكري من النوع الثاني.",
-  points: 20
-});
 
 /**
  * Performs deep market analysis using Gemini Pro.
