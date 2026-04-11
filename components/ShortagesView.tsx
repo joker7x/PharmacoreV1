@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Clock, CheckCircle2, ArrowRight, Search, Filter, PackageX, TrendingDown, PackageCheck } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, ArrowRight, Search, Filter, PackageX, TrendingDown, PackageCheck, Award } from 'lucide-react';
 
 interface ShortagesViewProps {
   onBack: () => void;
@@ -33,12 +33,12 @@ const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab, count }: an
   const MDiv = motion.div as any;
   const isActive = activeTab === id;
   return (
-    <button onClick={() => setActiveTab(id)} className={`flex-1 py-3 rounded-[20px] flex flex-col items-center justify-center gap-1.5 text-[10px] font-black transition-all relative ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
-      {isActive && <MDiv layoutId="activeShortageTab" className="absolute inset-0 bg-white dark:bg-slate-800 shadow-sm rounded-[20px] border border-slate-200 dark:border-slate-700" transition={{ type: "spring", bounce: 0.15, duration: 0.4 }} />}
+    <button onClick={() => setActiveTab(id)} className={`flex-1 py-3 rounded-[22px] flex flex-col items-center justify-center gap-1.5 text-[10px] font-black transition-all relative ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+      {isActive && <MDiv layoutId="activeShortageTab" className="absolute inset-0 bg-rose-50 dark:bg-rose-900/20 shadow-sm rounded-[22px] border border-rose-100 dark:border-rose-800/50" transition={{ type: "spring", bounce: 0.15, duration: 0.4 }} />}
       <span className="relative z-10 flex items-center gap-1.5">
         <Icon size={16} className={isActive ? (id === 'current' ? 'text-rose-500' : id === 'expected' ? 'text-amber-500' : 'text-emerald-500') : ''} />
         {label}
-        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-slate-100 dark:bg-slate-700' : 'bg-slate-100 dark:bg-slate-800/50'}`}>{count}</span>
+        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400' : 'bg-slate-100 dark:bg-slate-800/50'}`}>{count}</span>
       </span>
     </button>
   );
@@ -62,21 +62,50 @@ export const ShortagesView: React.FC<ShortagesViewProps> = ({ onBack }) => {
     }
   };
 
+  const getLevelColor = (level: string) => {
+    switch(level) {
+      case 'diamond': return 'from-cyan-400 to-blue-600';
+      case 'gold': return 'from-yellow-400 to-amber-600';
+      case 'silver': return 'from-slate-300 to-slate-500';
+      case 'bronze': return 'from-orange-400 to-orange-600';
+      default: return 'from-slate-400 to-slate-500';
+    }
+  };
+
+  const gamification = {
+    level: 'gold',
+    points: 1250,
+    isVerified: true
+  };
+
   return (
-    <div className="pt-14 px-6 pb-32 min-h-screen" dir="rtl">
-      <header className="flex items-center justify-between mb-8 pt-4">
+    <div className="pt-14 px-4 pb-32 min-h-screen" dir="rtl">
+      <header className="flex items-center justify-between mb-8 pt-4 px-2">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-[22px] bg-rose-600 flex items-center justify-center text-white shadow-xl shadow-rose-500/20">
-            <AlertTriangle size={28} strokeWidth={2.5} />
+          <div className="w-12 h-12 rounded-[20px] bg-rose-600 flex items-center justify-center text-white shadow-xl shadow-rose-500/20">
+            <AlertTriangle size={24} strokeWidth={2.5} />
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">نواقص السوق</h1>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">تحديثات النواقص والبدائل</p>
           </div>
         </div>
+        
+        {/* User Gamification Badge */}
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-right">
+            <div className="text-[10px] font-black text-slate-400 dark:text-slate-500">نقاطك</div>
+            <div className="text-sm font-black text-rose-600 dark:text-rose-400 leading-none">{gamification.points}</div>
+          </div>
+          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getLevelColor(gamification.level)} p-[2px]`}>
+            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-full flex items-center justify-center">
+              <Award size={14} className="text-slate-800 dark:text-slate-200" />
+            </div>
+          </div>
+        </div>
       </header>
 
-      <div className="relative mb-6">
+      <div className="relative mb-6 px-2">
         <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
           <Search size={18} className="text-slate-400" />
         </div>
@@ -85,11 +114,11 @@ export const ShortagesView: React.FC<ShortagesViewProps> = ({ onBack }) => {
           placeholder="ابحث في النواقص..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] py-4 pr-12 pl-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all shadow-sm"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] py-4 pr-12 pl-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all shadow-sm"
         />
       </div>
 
-      <div className="bg-slate-100 dark:bg-slate-900 rounded-[24px] p-1.5 flex items-center mb-6 border border-slate-200 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-[28px] p-1.5 flex items-center mb-6 border border-slate-200 dark:border-slate-800 shadow-sm">
         <TabButton id="current" label="نواقص حالية" icon={PackageX} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'current').length} />
         <TabButton id="expected" label="متوقع نقصه" icon={TrendingDown} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'expected').length} />
         <TabButton id="available" label="توفرت حديثاً" icon={PackageCheck} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'available').length} />
@@ -106,7 +135,7 @@ export const ShortagesView: React.FC<ShortagesViewProps> = ({ onBack }) => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden"
+                className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden"
               >
                 <div className={`absolute top-0 right-0 w-1.5 h-full bg-${color}-500`} />
                 <div className="flex justify-between items-start mb-3">

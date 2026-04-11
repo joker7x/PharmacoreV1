@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X, Lock, ShieldAlert } from 'lucide-react';
+import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X, Lock, ShieldAlert, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SettingsViewProps {
@@ -19,7 +19,7 @@ const SettingSection = React.memo(({ title, children }: { title: string, childre
     <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3 px-4 flex items-center gap-2">
       {title}
     </h3>
-    <div className="bg-white dark:bg-white/5 rounded-[32px] overflow-hidden border border-slate-100 dark:border-white/5 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
       {children}
     </div>
   </div>
@@ -42,7 +42,7 @@ const SettingItem = React.memo(({ icon: Icon, label, action, isLast = false, val
     <MButton
         whileTap={{ backgroundColor: "rgba(0,0,0,0.02)" }}
         onClick={action}
-        className={`w-full flex items-center justify-between p-5 ${!isLast ? 'border-b border-slate-50 dark:border-white/5' : ''} transition-colors text-right`}
+        className={`w-full flex items-center justify-between p-5 ${!isLast ? 'border-b border-slate-100 dark:border-slate-800' : ''} transition-colors text-right hover:bg-slate-50 dark:hover:bg-slate-800/50`}
     >
         <div className="flex items-center gap-4">
             <div className={`p-2.5 rounded-2xl ${colors.bg} ${colors.darkBg} ${colors.text} ${colors.darkText}`}>
@@ -85,17 +85,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
     window.open("https://t.me/your_support_username", "_blank");
   };
 
+  const getLevelColor = (level: string) => {
+    switch(level) {
+      case 'diamond': return 'from-cyan-400 to-blue-600';
+      case 'gold': return 'from-yellow-400 to-amber-600';
+      case 'silver': return 'from-slate-300 to-slate-500';
+      case 'bronze': return 'from-orange-400 to-orange-600';
+      default: return 'from-slate-400 to-slate-500';
+    }
+  };
+
+  const gamification = {
+    level: 'gold',
+    points: 1250,
+    isVerified: true
+  };
+
   return (
-    <div className="pt-14 px-6 pb-32 min-h-screen">
-        <div className="flex items-center gap-4 mb-10 pt-4">
-            <div className="w-14 h-14 rounded-[22px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
-                <Settings size={28} strokeWidth={2.5} />
+    <div className="pt-14 px-4 pb-32 min-h-screen">
+        <header className="flex items-center justify-between mb-8 pt-4 px-2">
+          <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-[20px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                  <Settings size={24} strokeWidth={2.5} />
+              </div>
+              <div>
+                  <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Pharma Core</h1>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">الإعدادات والتحكم</p>
+              </div>
+          </div>
+          
+          {/* User Gamification Badge */}
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="text-right">
+              <div className="text-[10px] font-black text-slate-400 dark:text-slate-500">نقاطك</div>
+              <div className="text-sm font-black text-blue-600 dark:text-blue-400 leading-none">{gamification.points}</div>
             </div>
-            <div>
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Pharma Core</h1>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">الإعدادات والتحكم</p>
+            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getLevelColor(gamification.level)} p-[2px]`}>
+              <div className="w-full h-full bg-white dark:bg-slate-900 rounded-full flex items-center justify-center">
+                <Award size={14} className="text-slate-800 dark:text-slate-200" />
+              </div>
             </div>
-        </div>
+          </div>
+        </header>
 
         {isAdmin && (
           <SettingSection title="الإدارة الفنية">

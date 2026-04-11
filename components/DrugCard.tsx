@@ -35,7 +35,7 @@ export const DrugCard = memo(React.forwardRef<HTMLDivElement, DrugCardProps>(({ 
       onClick={() => onOpenInfo(drug)}
       className="active:scale-[0.98] transition-all cursor-pointer group"
     >
-      <div className="premium-card rounded-[32px] p-6 relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">

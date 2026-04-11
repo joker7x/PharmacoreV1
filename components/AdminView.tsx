@@ -61,17 +61,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   }, [activeTab]);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 pt-16 px-6 pb-40 overflow-y-auto no-scrollbar transition-colors duration-300" dir="rtl">
-      <header className="flex items-center justify-between mb-8">
+    <div className="fixed inset-0 z-[200] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 pt-14 px-4 pb-40 overflow-y-auto no-scrollbar transition-colors duration-300" dir="rtl">
+      <header className="flex items-center justify-between mb-8 pt-4 px-2">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-2xl shadow-blue-600/20"><ShieldCheck size={30} /></div>
-          <div><h1 className="text-2xl font-black">مركز التحكم</h1><p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Pharma Core Security</p></div>
+          <div className="w-12 h-12 rounded-[20px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20"><ShieldCheck size={24} strokeWidth={2.5} /></div>
+          <div><h1 className="text-2xl font-black tracking-tight">مركز التحكم</h1><p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-0.5">Pharma Core Security</p></div>
         </div>
-        <button onClick={onBack} className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 active:scale-90 shadow-sm"><ArrowRight size={20} /></button>
+        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"><ArrowRight size={20} /></button>
       </header>
 
-      <div className="sticky top-0 z-50 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md pb-6 pt-2">
-        <div className="premium-card rounded-3xl p-1.5 flex items-center overflow-x-auto no-scrollbar">
+      <div className="sticky top-0 z-50 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md pb-6 pt-2 px-2">
+        <div className="bg-white dark:bg-slate-900 rounded-[28px] p-1.5 flex items-center border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto no-scrollbar">
           <TabButton id="dashboard" label="الرئيسية" icon={Activity} activeTab={activeTab} setActiveTab={setActiveTab} />
           <TabButton id="users" label="الأعضاء" icon={Users} activeTab={activeTab} setActiveTab={setActiveTab} />
           <TabButton id="system" label="النظام" icon={Terminal} activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -80,19 +80,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 
       <AnimatePresence mode="wait">
         {activeTab === 'dashboard' && (
-          <MDiv key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <MDiv key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 px-2">
             <div className="grid grid-cols-2 gap-4">
-              <div className="premium-card p-6 rounded-[32px] flex flex-col justify-between h-40">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 rounded-[28px] flex flex-col justify-between h-40">
                 <Database size={24} className="text-blue-600 dark:text-blue-400" />
                 <div><div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">إجمالي الداتا</div><div className="text-3xl font-black">{drugsCount.toLocaleString()}</div></div>
               </div>
-              <div className="premium-card p-6 rounded-[32px] flex flex-col justify-between h-40">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 rounded-[28px] flex flex-col justify-between h-40">
                 <Users size={24} className="text-emerald-600 dark:text-emerald-400" />
                 <div><div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">المستخدمين</div><div className="text-3xl font-black">{users.length || drugsCount > 0 ? '---' : '0'}</div></div>
               </div>
             </div>
 
-            <div className="premium-card p-6 rounded-[32px] border-l-4 border-amber-500">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 rounded-[28px] border-r-4 border-r-amber-500">
                <div className="flex items-center gap-3 mb-4">
                   <ShieldAlert className="text-amber-500" size={20} />
                   <h3 className="font-black text-sm text-slate-800 dark:text-slate-200">التدقيق الأمني المستمر</h3>

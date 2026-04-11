@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Trash2, Printer, ChevronRight, Scan, X, ArrowLeft, Minus } from 'lucide-react';
+import { Search, Plus, Trash2, Printer, ChevronRight, Scan, X, ArrowLeft, ArrowRight, Minus } from 'lucide-react';
 import { Drug, InvoiceItem } from '../types.ts';
 import { searchDrugs } from '../services/supabase.ts';
 
@@ -55,11 +55,18 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ onBack }) => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-14 pb-24 px-4 rtl" dir="rtl">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8 pt-4">
-          <button onClick={onBack} className="w-11 h-11 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-slate-800 active:scale-90">
-            <ArrowLeft size={24} />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-[20px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+              <Printer size={24} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">إنشاء فاتورة</h1>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">حاسبة الأسعار</p>
+            </div>
+          </div>
+          <button onClick={onBack} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+            <ArrowRight size={20} />
           </button>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">إنشاء فاتورة</h1>
-          <div className="w-11" />
         </div>
 
         <div className="mb-6 bg-white dark:bg-slate-900 p-5 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">

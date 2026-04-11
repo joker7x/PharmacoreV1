@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Package2, ShieldCheck, Zap, LayoutGrid, Info } from 'lucide-react';
+import { Search, Package2, ShieldCheck, Zap, LayoutGrid, Info, Award } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fetchDrugBatchFromAPI } from './services/api.ts';
 import { Drug, TabMode, AppView, AdminConfig } from './types.ts';
@@ -198,24 +198,52 @@ const App: React.FC = () => {
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
       case 'shortages': return <ShortagesView onBack={() => setCurrentView('home')} />;
       case 'community': return <CommunityView onBack={() => setCurrentView('home')} />;
-      default: return (
-        <div className="pt-16 px-6 max-w-lg mx-auto w-full pb-32">
-          <header className="flex items-center justify-between mb-12">
+      default: 
+        // Mock Gamification Data for Header
+        const gamification = {
+          level: 'gold',
+          points: 1250,
+          isVerified: true
+        };
+        
+        const getLevelColor = (level: string) => {
+          switch(level) {
+            case 'diamond': return 'from-cyan-400 to-blue-600';
+            case 'gold': return 'from-yellow-400 to-amber-600';
+            case 'silver': return 'from-slate-300 to-slate-500';
+            case 'bronze': return 'from-orange-400 to-orange-600';
+            default: return 'from-slate-400 to-slate-500';
+          }
+        };
+
+        return (
+        <div className="pt-14 px-4 max-w-lg mx-auto w-full pb-32">
+          <header className="flex items-center justify-between mb-8 pt-4 px-2">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/20">
-                <ShieldCheck size={32} strokeWidth={2.5} />
+              <div className="w-12 h-12 rounded-[20px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                <ShieldCheck size={24} strokeWidth={2.5} />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none dark:text-white">PHARMA <span className="text-blue-600">CORE</span></h1>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[8px] font-black bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-slate-500 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">Premium v4.0</span>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">PHARMA <span className="text-blue-600">CORE</span></h1>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">Premium v4.0</p>
+              </div>
+            </div>
+            
+            {/* User Gamification Badge */}
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="text-right">
+                <div className="text-[10px] font-black text-slate-400 dark:text-slate-500">نقاطك</div>
+                <div className="text-sm font-black text-blue-600 dark:text-blue-400 leading-none">{gamification.points}</div>
+              </div>
+              <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getLevelColor(gamification.level)} p-[2px]`}>
+                <div className="w-full h-full bg-white dark:bg-slate-900 rounded-full flex items-center justify-center">
+                  <Award size={14} className="text-slate-800 dark:text-slate-200" />
                 </div>
               </div>
             </div>
           </header>
 
-          <div className="relative mb-8 group">
+          <div className="relative mb-6 group px-2">
             <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
             <input 
               type="text" 
