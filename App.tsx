@@ -11,6 +11,7 @@ import { SettingsView } from './components/SettingsView.tsx';
 import { AdminView } from './components/AdminView.tsx';
 import { InvoiceBuilder } from './components/InvoiceBuilder.tsx';
 import { ShortagesView } from './components/ShortagesView.tsx';
+import { CommunityView } from './components/CommunityView.tsx';
 import { getGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
 const App: React.FC = () => {
@@ -196,6 +197,7 @@ const App: React.FC = () => {
       case 'settings': return <SettingsView user={currentUser} darkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
       case 'shortages': return <ShortagesView onBack={() => setCurrentView('home')} />;
+      case 'community': return <CommunityView onBack={() => setCurrentView('home')} />;
       default: return (
         <div className="pt-16 px-6 max-w-lg mx-auto w-full pb-32">
           <header className="flex items-center justify-between mb-12">

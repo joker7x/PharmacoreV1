@@ -1,6 +1,28 @@
 
-export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages';
+export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages' | 'community';
 export type TabMode = 'all' | 'changed' | 'fav';
+
+export interface CommunityUser {
+  id: string;
+  name: string;
+  avatar?: string;
+  isVerified: boolean;
+  level: 'bronze' | 'silver' | 'gold' | 'diamond';
+  points: number;
+  role: 'pharmacist' | 'student' | 'doctor' | 'admin';
+}
+
+export interface CommunityPost {
+  id: string;
+  author: CommunityUser;
+  content: string;
+  mentionedDrugs: { id: string; name: string }[];
+  mentionedActiveIngredients: string[];
+  likes: number;
+  commentsCount: number;
+  createdAt: string;
+  isReported?: boolean;
+}
 
 export interface Drug {
   drug_no: string;           
