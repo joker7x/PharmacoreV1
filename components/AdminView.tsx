@@ -20,8 +20,8 @@ interface AdminViewProps {
 const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab }: any) => {
   const MDiv = motion.div as any;
   return (
-    <button onClick={() => setActiveTab(id)} className={`flex-1 py-4 rounded-[22px] flex flex-col items-center justify-center gap-1.5 text-[9px] font-black transition-all relative ${activeTab === id ? 'text-blue-600' : 'text-slate-400'}`}>
-      {activeTab === id && <MDiv layoutId="activeAdminTab" className="absolute inset-x-1 bottom-1 h-1 bg-blue-600 rounded-full" />}
+    <button onClick={() => setActiveTab(id)} className={`flex-1 py-4 rounded-[22px] flex flex-col items-center justify-center gap-1.5 text-[9px] font-black transition-all relative ${activeTab === id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+      {activeTab === id && <MDiv layoutId="activeAdminTab" className="absolute inset-x-1 bottom-1 h-1 bg-blue-600 dark:bg-blue-400 rounded-full" />}
       <Icon size={18} />
       <span>{label}</span>
     </button>
@@ -61,16 +61,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
   }, [activeTab]);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-slate-900 pt-16 px-6 pb-40 overflow-y-auto no-scrollbar" dir="rtl">
+    <div className="fixed inset-0 z-[200] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 pt-16 px-6 pb-40 overflow-y-auto no-scrollbar transition-colors duration-300" dir="rtl">
       <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-2xl shadow-blue-600/20"><ShieldCheck size={30} /></div>
-          <div><h1 className="text-2xl font-black">مركز التحكم</h1><p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Pharma Core Security</p></div>
+          <div><h1 className="text-2xl font-black">مركز التحكم</h1><p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Pharma Core Security</p></div>
         </div>
-        <button onClick={onBack} className="w-12 h-12 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 active:scale-90 shadow-sm"><ArrowRight size={20} /></button>
+        <button onClick={onBack} className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 active:scale-90 shadow-sm"><ArrowRight size={20} /></button>
       </header>
 
-      <div className="sticky top-0 z-50 bg-[#f8fafc]/90 backdrop-blur-md pb-6 pt-2">
+      <div className="sticky top-0 z-50 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md pb-6 pt-2">
         <div className="premium-card rounded-3xl p-1.5 flex items-center overflow-x-auto no-scrollbar">
           <TabButton id="dashboard" label="الرئيسية" icon={Activity} activeTab={activeTab} setActiveTab={setActiveTab} />
           <TabButton id="users" label="الأعضاء" icon={Users} activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -83,27 +83,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
           <MDiv key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="premium-card p-6 rounded-[32px] flex flex-col justify-between h-40">
-                <Database size={24} className="text-blue-600" />
-                <div><div className="text-[10px] font-black text-slate-400 uppercase mb-1">إجمالي الداتا</div><div className="text-3xl font-black">{drugsCount.toLocaleString()}</div></div>
+                <Database size={24} className="text-blue-600 dark:text-blue-400" />
+                <div><div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">إجمالي الداتا</div><div className="text-3xl font-black">{drugsCount.toLocaleString()}</div></div>
               </div>
               <div className="premium-card p-6 rounded-[32px] flex flex-col justify-between h-40">
-                <Users size={24} className="text-emerald-600" />
-                <div><div className="text-[10px] font-black text-slate-400 uppercase mb-1">المستخدمين</div><div className="text-3xl font-black">{users.length || drugsCount > 0 ? '---' : '0'}</div></div>
+                <Users size={24} className="text-emerald-600 dark:text-emerald-400" />
+                <div><div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">المستخدمين</div><div className="text-3xl font-black">{users.length || drugsCount > 0 ? '---' : '0'}</div></div>
               </div>
             </div>
 
             <div className="premium-card p-6 rounded-[32px] border-l-4 border-amber-500">
                <div className="flex items-center gap-3 mb-4">
                   <ShieldAlert className="text-amber-500" size={20} />
-                  <h3 className="font-black text-sm text-slate-800">التدقيق الأمني المستمر</h3>
+                  <h3 className="font-black text-sm text-slate-800 dark:text-slate-200">التدقيق الأمني المستمر</h3>
                </div>
                <div className="space-y-3">
                   {auditLogs.length > 0 ? auditLogs.map((log, i) => (
-                    <div key={i} className="flex justify-between items-center text-[11px] bg-slate-50 p-3 rounded-xl border border-slate-100">
-                       <span className="font-bold text-slate-700">{log.msg}</span>
-                       <span className="text-slate-400 font-black">{log.time}</span>
+                    <div key={i} className="flex justify-between items-center text-[11px] bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                       <span className="font-bold text-slate-700 dark:text-slate-300">{log.msg}</span>
+                       <span className="text-slate-400 dark:text-slate-500 font-black">{log.time}</span>
                     </div>
-                  )) : <div className="text-center py-4 text-slate-300 font-bold text-xs uppercase tracking-widest">No Recent Activity</div>}
+                  )) : <div className="text-center py-4 text-slate-300 dark:text-slate-600 font-bold text-xs uppercase tracking-widest">No Recent Activity</div>}
                </div>
             </div>
           </MDiv>
@@ -112,18 +112,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
         {activeTab === 'system' && (
           <MDiv key="system" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
             <div className="premium-card p-8 rounded-[40px]">
-               <h3 className="text-lg font-black mb-8 flex items-center gap-3 text-slate-800"><Terminal className="text-blue-600" size={20} /> وظائف النظام الأساسية</h3>
+               <h3 className="text-lg font-black mb-8 flex items-center gap-3 text-slate-800 dark:text-slate-200"><Terminal className="text-blue-600 dark:text-blue-400" size={20} /> وظائف النظام الأساسية</h3>
                <div className="space-y-4">
                   <SystemAction label="وضع الصيانة" description="قفل التطبيق عن جميع المستخدمين" icon={Construction} active={config.maintenanceMode} onClick={() => saveConfig({maintenanceMode: !config.maintenanceMode})} />
                   <SystemAction label="التزامن المباشر" description="تحديث الأسعار من السيرفر لحظياً" icon={RefreshCw} active={config.liveSync} onClick={() => saveConfig({liveSync: !config.liveSync})} />
-                  <SystemAction label="الذكاء الاصطناعي" description="تحليلات Gemini للماركت" icon={Sparkles} active={config.aiAnalysis} onClick={() => saveConfig({aiAnalysis: !config.aiAnalysis})} />
                </div>
             </div>
 
-            <div className="premium-card p-8 rounded-[40px] bg-slate-900 text-white border-none shadow-2xl">
+            <div className="premium-card p-8 rounded-[40px] bg-slate-900 dark:bg-slate-950 text-white border-none shadow-2xl">
                <h3 className="text-lg font-black mb-6 flex items-center gap-3"><Zap className="text-yellow-400" size={20} /> وحدة البث الموحد</h3>
-               <input type="text" placeholder="عنوان التنبيه..." className="w-full bg-white/10 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none mb-4 placeholder:text-white/30" />
-               <textarea placeholder="رسالة البث..." className="w-full bg-white/10 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none mb-6 placeholder:text-white/30" />
+               <input type="text" placeholder="عنوان التنبيه..." className="w-full bg-white/10 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none mb-4 placeholder:text-white/30 text-white" />
+               <textarea placeholder="رسالة البث..." className="w-full bg-white/10 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none h-32 resize-none mb-6 placeholder:text-white/30 text-white" />
                <button onClick={() => { addLog("إرسال بث عام"); alert("تم إرسال الإشعار لجميع المستخدمين."); }} className="w-full py-5 bg-blue-600 rounded-[22px] font-black text-sm flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl shadow-blue-600/20"><Send size={18} /> إطلاق البث الآن</button>
             </div>
           </MDiv>
@@ -134,15 +133,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack, drugsCount, config
 };
 
 const SystemAction = ({ label, description, icon: Icon, active, onClick }: any) => (
-  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-[28px]">
+  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[28px]">
     <div className="flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${active ? 'bg-blue-600 text-white' : 'bg-white text-slate-300'}`}><Icon size={20} /></div>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${active ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600'}`}><Icon size={20} /></div>
       <div>
-        <h4 className="text-[13px] font-black text-slate-800">{label}</h4>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{description}</p>
+        <h4 className="text-[13px] font-black text-slate-800 dark:text-slate-200">{label}</h4>
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">{description}</p>
       </div>
     </div>
-    <button onClick={onClick} className={`w-14 h-7 rounded-full p-1 transition-all flex items-center ${active ? 'bg-blue-600' : 'bg-slate-200'}`}>
+    <button onClick={onClick} className={`w-14 h-7 rounded-full p-1 transition-all flex items-center ${active ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
       <motion.div animate={{ x: active ? 28 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="w-5 h-5 bg-white rounded-full shadow-md" />
     </button>
   </div>

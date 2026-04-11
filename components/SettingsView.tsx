@@ -25,9 +25,19 @@ const SettingSection = React.memo(({ title, children }: { title: string, childre
   </div>
 ));
 
+const colorMap: Record<string, { bg: string, text: string, darkBg: string, darkText: string }> = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', darkBg: 'dark:bg-blue-500/10', darkText: 'dark:text-blue-400' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', darkBg: 'dark:bg-emerald-500/10', darkText: 'dark:text-emerald-400' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', darkBg: 'dark:bg-indigo-500/10', darkText: 'dark:text-indigo-400' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', darkBg: 'dark:bg-rose-500/10', darkText: 'dark:text-rose-400' },
+  slate: { bg: 'bg-slate-50', text: 'text-slate-600', darkBg: 'dark:bg-slate-500/10', darkText: 'dark:text-slate-400' },
+};
+
 const SettingItem = React.memo(({ icon: Icon, label, action, isLast = false, valueLabel, color = "blue" }: any) => {
   // Use any to bypass TypeScript errors for motion props
   const MButton = motion.button as any;
+  const colors = colorMap[color] || colorMap.blue;
+  
   return (
     <MButton
         whileTap={{ backgroundColor: "rgba(0,0,0,0.02)" }}
@@ -35,7 +45,7 @@ const SettingItem = React.memo(({ icon: Icon, label, action, isLast = false, val
         className={`w-full flex items-center justify-between p-5 ${!isLast ? 'border-b border-slate-50 dark:border-white/5' : ''} transition-colors text-right`}
     >
         <div className="flex items-center gap-4">
-            <div className={`p-2.5 rounded-2xl bg-${color}-50 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400`}>
+            <div className={`p-2.5 rounded-2xl ${colors.bg} ${colors.darkBg} ${colors.text} ${colors.darkText}`}>
                 <Icon size={18} strokeWidth={2.5} />
             </div>
             <span className="font-black text-[15px] text-slate-700 dark:text-slate-200">{label}</span>
@@ -53,7 +63,7 @@ const PolicyModal = ({ title, content, onClose }: { title: string, content: stri
   const MDiv = motion.div as any;
   return (
     <MDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-md p-6 flex items-center justify-center">
-      <MDiv initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-[40px] p-8 max-h-[80vh] overflow-y-auto no-scrollbar relative">
+      <MDiv initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[40px] p-8 max-h-[80vh] overflow-y-auto no-scrollbar relative">
         <button onClick={onClose} className="absolute top-6 left-6 w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400">
           <X size={20} />
         </button>
@@ -76,7 +86,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
   };
 
   return (
-    <MDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="pt-14 px-6 pb-32 min-h-screen">
+    <div className="pt-14 px-6 pb-32 min-h-screen">
         <div className="flex items-center gap-4 mb-10 pt-4">
             <div className="w-14 h-14 rounded-[22px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
                 <Settings size={28} strokeWidth={2.5} />
@@ -144,6 +154,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
         <AnimatePresence>
           {modal && <PolicyModal title={modal.title} content={modal.content} onClose={() => setModal(null)} />}
         </AnimatePresence>
-    </MDiv>
+    </div>
   );
 }

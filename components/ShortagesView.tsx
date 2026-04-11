@@ -1,0 +1,158 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle, Clock, CheckCircle2, ArrowRight, Search, Filter, PackageX, TrendingDown, PackageCheck } from 'lucide-react';
+
+interface ShortagesViewProps {
+  onBack: () => void;
+}
+
+type ShortageTab = 'current' | 'expected' | 'available';
+
+interface ShortageItem {
+  id: string;
+  name_en: string;
+  name_ar: string;
+  status: ShortageTab;
+  last_updated: string;
+  alternatives_count: number;
+  expected_date?: string;
+  company: string;
+}
+
+const mockShortages: ShortageItem[] = [
+  { id: '1', name_en: 'Panadol Extra 24 Tablets', name_ar: 'بانادول اكسترا 24 قرص', status: 'current', last_updated: 'منذ ساعتين', alternatives_count: 5, company: 'GSK' },
+  { id: '2', name_en: 'Augmentin 1g Tablets', name_ar: 'اوجمنتين 1 جم اقراص', status: 'current', last_updated: 'منذ يومين', alternatives_count: 3, company: 'GSK' },
+  { id: '3', name_en: 'Concor 5mg Tablets', name_ar: 'كونكور 5 مجم اقراص', status: 'expected', last_updated: 'منذ 5 ساعات', alternatives_count: 2, expected_date: 'نهاية الشهر', company: 'Merck' },
+  { id: '4', name_en: 'Cataflam 50mg Tablets', name_ar: 'كاتافلام 50 مجم اقراص', status: 'available', last_updated: 'اليوم', alternatives_count: 4, company: 'Novartis' },
+  { id: '5', name_en: 'Eltroxin 100mcg Tablets', name_ar: 'التروكسين 100 ميكروجرام', status: 'current', last_updated: 'منذ اسبوع', alternatives_count: 1, company: 'Aspen' },
+  { id: '6', name_en: 'Amaryl 2mg Tablets', name_ar: 'اماريل 2 مجم اقراص', status: 'expected', last_updated: 'منذ يوم', alternatives_count: 3, expected_date: 'الاسبوع القادم', company: 'Sanofi' },
+  { id: '7', name_en: 'Nexium 40mg Tablets', name_ar: 'نيكسيوم 40 مجم اقراص', status: 'available', last_updated: 'منذ 3 أيام', alternatives_count: 2, company: 'AstraZeneca' },
+];
+
+const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab, count }: any) => {
+  const MDiv = motion.div as any;
+  const isActive = activeTab === id;
+  return (
+    <button onClick={() => setActiveTab(id)} className={`flex-1 py-3 rounded-[20px] flex flex-col items-center justify-center gap-1.5 text-[10px] font-black transition-all relative ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+      {isActive && <MDiv layoutId="activeShortageTab" className="absolute inset-0 bg-white dark:bg-slate-800 shadow-sm rounded-[20px] border border-slate-200 dark:border-slate-700" transition={{ type: "spring", bounce: 0.15, duration: 0.4 }} />}
+      <span className="relative z-10 flex items-center gap-1.5">
+        <Icon size={16} className={isActive ? (id === 'current' ? 'text-rose-500' : id === 'expected' ? 'text-amber-500' : 'text-emerald-500') : ''} />
+        {label}
+        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-slate-100 dark:bg-slate-700' : 'bg-slate-100 dark:bg-slate-800/50'}`}>{count}</span>
+      </span>
+    </button>
+  );
+};
+
+export const ShortagesView: React.FC<ShortagesViewProps> = ({ onBack }) => {
+  const MDiv = motion.div as any;
+  const [activeTab, setActiveTab] = useState<ShortageTab>('current');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredItems = mockShortages.filter(item => 
+    item.status === activeTab && 
+    (item.name_en.toLowerCase().includes(searchQuery.toLowerCase()) || item.name_ar.includes(searchQuery))
+  );
+
+  const getStatusColor = (status: ShortageTab) => {
+    switch(status) {
+      case 'current': return 'rose';
+      case 'expected': return 'amber';
+      case 'available': return 'emerald';
+    }
+  };
+
+  return (
+    <div className="pt-14 px-6 pb-32 min-h-screen" dir="rtl">
+      <header className="flex items-center justify-between mb-8 pt-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-[22px] bg-rose-600 flex items-center justify-center text-white shadow-xl shadow-rose-500/20">
+            <AlertTriangle size={28} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">نواقص السوق</h1>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">تحديثات النواقص والبدائل</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+          <Search size={18} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="ابحث في النواقص..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] py-4 pr-12 pl-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all shadow-sm"
+        />
+      </div>
+
+      <div className="bg-slate-100 dark:bg-slate-900 rounded-[24px] p-1.5 flex items-center mb-6 border border-slate-200 dark:border-slate-800">
+        <TabButton id="current" label="نواقص حالية" icon={PackageX} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'current').length} />
+        <TabButton id="expected" label="متوقع نقصه" icon={TrendingDown} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'expected').length} />
+        <TabButton id="available" label="توفرت حديثاً" icon={PackageCheck} activeTab={activeTab} setActiveTab={setActiveTab} count={mockShortages.filter(i => i.status === 'available').length} />
+      </div>
+
+      <div className="space-y-4">
+        <AnimatePresence>
+          {filteredItems.length > 0 ? filteredItems.map((item) => {
+            const color = getStatusColor(item.status);
+            return (
+              <MDiv
+                key={item.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden"
+              >
+                <div className={`absolute top-0 right-0 w-1.5 h-full bg-${color}-500`} />
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{item.name_en}</h3>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{item.name_ar}</p>
+                  </div>
+                  <div className={`px-2.5 py-1 rounded-xl text-[10px] font-black bg-${color}-50 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400 whitespace-nowrap`}>
+                    {item.status === 'current' ? 'غير متوفر' : item.status === 'expected' ? 'متوقع نقصه' : 'متوفر الآن'}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                  <div className="flex-1">
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">الشركة المنتجة</div>
+                    <div className="text-xs font-black text-slate-700 dark:text-slate-300">{item.company}</div>
+                  </div>
+                  {item.expected_date && (
+                    <div className="flex-1">
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">التوفر المتوقع</div>
+                      <div className="text-xs font-black text-amber-600 dark:text-amber-400">{item.expected_date}</div>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">البدائل المتاحة</div>
+                    <div className="text-xs font-black text-blue-600 dark:text-blue-400">{item.alternatives_count} بدائل</div>
+                  </div>
+                </div>
+                
+                <div className="absolute bottom-4 left-5 flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                  <Clock size={10} />
+                  <span>{item.last_updated}</span>
+                </div>
+              </MDiv>
+            );
+          }) : (
+            <MDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-12 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
+                <Filter size={32} className="text-slate-300 dark:text-slate-600" />
+              </div>
+              <h3 className="text-slate-500 dark:text-slate-400 font-black text-sm">لا توجد نتائج مطابقة</h3>
+              <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">جرب البحث بكلمات مختلفة</p>
+            </MDiv>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};

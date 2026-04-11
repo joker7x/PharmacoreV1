@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, BarChart2, MoreHorizontal, FileText, Trophy } from 'lucide-react';
+import { Home, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AppView } from '../types.ts';
 
@@ -11,7 +11,7 @@ interface BottomNavigationProps {
 
 const tabs: { id: AppView; label: string; icon: React.ElementType }[] = [
   { id: 'home', label: 'الرئيسية', icon: Home },
-  { id: 'stats', label: 'تحليل السوق', icon: BarChart2 },
+  { id: 'shortages', label: 'نواقص', icon: AlertTriangle },
   { id: 'settings', label: 'المزيد', icon: MoreHorizontal },
 ];
 
@@ -20,16 +20,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView,
   const MDiv = motion.div as any;
 
   const handleNavClick = (view: AppView) => {
-    if (view === 'home' && currentView === 'home') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
     onNavigate(view);
   };
 
   return (
     <div className="fixed bottom-6 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none print:hidden">
-      <div className="bg-white dark:bg-zinc-900 rounded-[32px] px-2 py-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] flex items-center justify-around w-full max-w-[400px] border border-slate-200 dark:border-white/10 pointer-events-auto overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-slate-900 rounded-[32px] px-2 py-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] flex items-center justify-around w-full max-w-[400px] border border-slate-200 dark:border-slate-800 pointer-events-auto overflow-x-auto no-scrollbar">
         {tabs.map((tab) => {
           const isActive = currentView === tab.id;
           const Icon = tab.icon;
@@ -37,7 +33,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView,
             <button 
               key={tab.id}
               onClick={() => handleNavClick(tab.id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-2xl transition-all duration-300 relative ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-zinc-500'}`}
+              className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-2xl transition-all duration-300 relative ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}
             >
               <div className={`transition-all duration-300 ${isActive ? 'scale-110 -translate-y-0.5' : 'scale-100'}`}>
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />

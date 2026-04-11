@@ -1,5 +1,5 @@
 
-export type AppView = 'home' | 'settings' | 'admin' | 'stats' | 'invoice';
+export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages';
 export type TabMode = 'all' | 'changed' | 'fav';
 
 export interface Drug {
@@ -39,8 +39,6 @@ export interface AdminStats {
 }
 
 export interface AdminConfig {
-  aiAnalysis: boolean;
-  marketCheck: boolean;
   maintenanceMode: boolean;
   maintenanceMessage: string;
   maintenanceTime: string;

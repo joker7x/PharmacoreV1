@@ -48,22 +48,22 @@ export const DrugIntelligenceModal: React.FC<DrugIntelligenceModalProps> = ({ dr
             <MDiv 
                 initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 350 }}
-                className="bg-white dark:bg-brand-dark w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] overflow-hidden flex flex-col max-h-[92vh] shadow-2xl relative border-t border-slate-100 dark:border-white/5"
+                className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] overflow-hidden flex flex-col max-h-[92vh] shadow-2xl relative border-t border-slate-100 dark:border-slate-800"
             >
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full sm:hidden" />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-slate-200 dark:bg-slate-800 rounded-full sm:hidden" />
                 
                 <div className="px-8 pt-12 pb-6 flex justify-between items-start">
                     <div>
                       <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{drugName}</h2>
                       <p className="text-lg text-slate-500 dark:text-slate-400 font-bold mt-1">{drug.name_ar || '---'}</p>
                     </div>
-                    <button onClick={onClose} className="w-11 h-11 rounded-full bg-slate-50 dark:bg-zinc-900 flex items-center justify-center text-slate-400 active:scale-90 transition-transform border border-slate-100 dark:border-white/5">
+                    <button onClick={onClose} className="w-11 h-11 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 active:scale-90 transition-transform border border-slate-100 dark:border-slate-700">
                       <X size={20}/>
                     </button>
                 </div>
 
                 <div className="px-8 mb-4">
-                  <div className="flex bg-slate-100 dark:bg-zinc-900/5 p-1 rounded-[24px] border border-slate-200 dark:border-white/5">
+                  <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-[24px] border border-slate-200 dark:border-slate-700">
                       <TabItem 
                         active={activeTab === 'overview'} 
                         onClick={() => setActiveTab('overview')} 

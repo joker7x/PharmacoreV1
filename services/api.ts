@@ -18,7 +18,7 @@ const mapExternalToDrug = (item: ExternalDrugItem): Drug => {
   }
 
   return {
-    drug_no: item.id || Math.random().toString(36).substr(2, 9),
+    drug_no: item.id || `drug-${item.name ? item.name.replace(/\s+/g, '-') : 'unknown'}-${Math.random().toString(36).substr(2, 5)}`,
     name_en: item.name || "Unknown Product",
     name_ar: item.arabic || "",
     price_new: pNew,

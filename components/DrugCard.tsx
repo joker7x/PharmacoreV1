@@ -14,7 +14,7 @@ interface DrugCardProps {
 
 const dateFormatter = new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'short' });
 
-export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
+export const DrugCard = memo(React.forwardRef<HTMLDivElement, DrugCardProps>(({ drug, onOpenInfo, index }, ref) => {
   const MDiv = motion.div as any;
   const pNew = drug.price_new !== null ? Number(drug.price_new) : null;
   const pOld = drug.price_old !== null ? Number(drug.price_old) : null;
@@ -29,6 +29,7 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
 
   return (
     <MDiv 
+      ref={ref}
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} 
       transition={{ duration: 0.4, delay: Math.min(index * 0.04, 0.2) }}
       onClick={() => onOpenInfo(drug)}
@@ -38,16 +39,17 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{drug.company || 'المؤسسة الدوائية'}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{drug.company}</span>
+              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">#{index + 1}</span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 group-hover:text-blue-600 transition-colors">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-1 group-hover:text-blue-600 transition-colors">
               {drug.name_en}
             </h3>
-            <p className="text-[13px] font-bold text-slate-500">
+            <p className="text-[13px] font-bold text-slate-500 dark:text-slate-400">
               {drug.name_ar || '---'}
             </p>
           </div>
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${hasPriceChange ? (isIncrease ? 'bg-red-50 border-red-100 text-red-500' : 'bg-emerald-50 border-emerald-100 text-emerald-500') : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${hasPriceChange ? (isIncrease ? 'bg-red-50 border-red-100 text-red-500' : 'bg-emerald-50 border-emerald-100 text-emerald-500') : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400'}`}>
             <Pill size={24} />
           </div>
         </div>
@@ -55,7 +57,7 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
         <div className="flex items-end justify-between mt-6">
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{pNew?.toFixed(2) || '--'}</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{pNew?.toFixed(2) || '--'}</span>
               <span className="text-[10px] font-black text-slate-400 uppercase">EGP</span>
             </div>
             {hasPriceChange && (
@@ -69,9 +71,9 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
             )}
           </div>
           <div className="flex items-center gap-3">
-             <div className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2">
+             <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center gap-2">
                 <Calendar size={12} className="text-slate-400" />
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{formatDate(drug.api_updated_at)}</span>
+                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{formatDate(drug.api_updated_at)}</span>
              </div>
              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:translate-x-[-4px] transition-transform">
                 <ChevronLeft size={20} />
@@ -81,4 +83,4 @@ export const DrugCard = memo(({ drug, onOpenInfo, index }: DrugCardProps) => {
       </div>
     </MDiv>
   );
-});
+}));

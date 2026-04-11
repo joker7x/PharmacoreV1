@@ -6,81 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Pharma Core Premium</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     window.process = { env: { API_KEY: "" } };
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              primary: '#2563eb',
-              secondary: '#4f46e5',
-              bg: '#f8fafc',
-              surface: '#ffffff',
-              text: '#1e293b',
-              muted: '#64748b'
-            }
-          },
-          borderRadius: {
-            '3xl': '1.5rem',
-            '4xl': '2rem',
-            '5xl': '3rem',
-          }
-        }
-      }
-    }
   </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
-    body { 
-      margin: 0; 
-      padding: 0; 
-      font-family: 'IBM Plex Sans Arabic', sans-serif; 
-      background-color: #f8fafc; 
-      color: #1e293b;
-      direction: rtl;
-      -webkit-font-smoothing: antialiased;
-      overflow: hidden;
-    }
-    #root { height: 100vh; width: 100vw; overflow-y: auto; overflow-x: hidden; }
-    
-    .premium-card {
-      background: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.04);
-      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.04);
-    }
-    
-    .glass-nav {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border-top: 1px solid rgba(0, 0, 0, 0.06);
-    }
-
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    .boot-screen {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .boot-loader {
-      width: 48px;
-      height: 48px;
-      border: 3px solid #f1f5f9;
-      border-top-color: #2563eb;
-      border-radius: 50%;
-      animation: spin 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
   <script type="importmap">
 {
   "imports": {
@@ -100,12 +29,7 @@
 </script>
 </head>
 <body class="antialiased">
-  <div id="root">
-    <div class="boot-screen">
-      <div class="boot-loader"></div>
-      <div style="font-size: 10px; font-weight: 800; color: #2563eb; letter-spacing: 0.3em; text-transform: uppercase;">Pharma Core Premium</div>
-    </div>
-  </div>
+  <div id="root"></div>
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>
