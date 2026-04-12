@@ -1,6 +1,21 @@
 
-export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages' | 'community';
+export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages' | 'community' | 'profile';
 export type TabMode = 'all' | 'changed' | 'fav';
+
+export interface Experience {
+  id: string;
+  title: string;
+  company: string;
+  duration: string;
+  description?: string;
+}
+
+export interface Education {
+  id: string;
+  degree: string;
+  institution: string;
+  year: string;
+}
 
 export interface CommunityUser {
   id: string;
@@ -10,6 +25,12 @@ export interface CommunityUser {
   level: 'bronze' | 'silver' | 'gold' | 'diamond';
   points: number;
   role: 'pharmacist' | 'student' | 'doctor' | 'admin';
+  bio?: string;
+  title?: string;
+  location?: string;
+  experience?: Experience[];
+  education?: Education[];
+  skills?: string[];
 }
 
 export interface CommunityPost {
@@ -77,6 +98,20 @@ export interface InvoiceItem {
   quantity: number;  
   packPrice: number; 
   packSize: number;  
+}
+
+export interface StockItem {
+  id?: number;
+  drug_no: string;
+  name_en: string;
+  name_ar: string;
+  purchase_price: number;
+  selling_price: number;
+  quantity: number;
+  expiry_date: string;
+  discount_percentage: number;
+  last_updated: string;
+  dosage_form?: string;
 }
 
 /**

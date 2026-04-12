@@ -14,19 +14,20 @@ interface ShortageItem {
   name_ar: string;
   status: ShortageTab;
   last_updated: string;
-  alternatives_count: number;
+  alternatives: { name: string; price: number }[];
   expected_date?: string;
   company: string;
+  isNotified: boolean;
 }
 
 const mockShortages: ShortageItem[] = [
-  { id: '1', name_en: 'Panadol Extra 24 Tablets', name_ar: 'بانادول اكسترا 24 قرص', status: 'current', last_updated: 'منذ ساعتين', alternatives_count: 5, company: 'GSK' },
-  { id: '2', name_en: 'Augmentin 1g Tablets', name_ar: 'اوجمنتين 1 جم اقراص', status: 'current', last_updated: 'منذ يومين', alternatives_count: 3, company: 'GSK' },
-  { id: '3', name_en: 'Concor 5mg Tablets', name_ar: 'كونكور 5 مجم اقراص', status: 'expected', last_updated: 'منذ 5 ساعات', alternatives_count: 2, expected_date: 'نهاية الشهر', company: 'Merck' },
-  { id: '4', name_en: 'Cataflam 50mg Tablets', name_ar: 'كاتافلام 50 مجم اقراص', status: 'available', last_updated: 'اليوم', alternatives_count: 4, company: 'Novartis' },
-  { id: '5', name_en: 'Eltroxin 100mcg Tablets', name_ar: 'التروكسين 100 ميكروجرام', status: 'current', last_updated: 'منذ اسبوع', alternatives_count: 1, company: 'Aspen' },
-  { id: '6', name_en: 'Amaryl 2mg Tablets', name_ar: 'اماريل 2 مجم اقراص', status: 'expected', last_updated: 'منذ يوم', alternatives_count: 3, expected_date: 'الاسبوع القادم', company: 'Sanofi' },
-  { id: '7', name_en: 'Nexium 40mg Tablets', name_ar: 'نيكسيوم 40 مجم اقراص', status: 'available', last_updated: 'منذ 3 أيام', alternatives_count: 2, company: 'AstraZeneca' },
+  { id: '1', name_en: 'Panadol Extra 24 Tablets', name_ar: 'بانادول اكسترا 24 قرص', status: 'current', last_updated: 'منذ ساعتين', alternatives: [{name: 'Adol Extra', price: 25}, {name: 'Paramol Extra', price: 22}], company: 'GSK', isNotified: false },
+  { id: '2', name_en: 'Augmentin 1g Tablets', name_ar: 'اوجمنتين 1 جم اقراص', status: 'current', last_updated: 'منذ يومين', alternatives: [{name: 'Curam 1g', price: 85}, {name: 'Augmentin Alternative', price: 80}], company: 'GSK', isNotified: true },
+  { id: '3', name_en: 'Concor 5mg Tablets', name_ar: 'كونكور 5 مجم اقراص', status: 'expected', last_updated: 'منذ 5 ساعات', alternatives: [{name: 'Bisocard 5mg', price: 45}], expected_date: 'نهاية الشهر', company: 'Merck', isNotified: false },
+  { id: '4', name_en: 'Cataflam 50mg Tablets', name_ar: 'كاتافلام 50 مجم اقراص', status: 'available', last_updated: 'اليوم', alternatives: [{name: 'Voltaren 50mg', price: 35}], company: 'Novartis', isNotified: false },
+  { id: '5', name_en: 'Eltroxin 100mcg Tablets', name_ar: 'التروكسين 100 ميكروجرام', status: 'current', last_updated: 'منذ اسبوع', alternatives: [], company: 'Aspen', isNotified: true },
+  { id: '6', name_en: 'Amaryl 2mg Tablets', name_ar: 'اماريل 2 مجم اقراص', status: 'expected', last_updated: 'منذ يوم', alternatives: [{name: 'Glim 2mg', price: 30}], expected_date: 'الاسبوع القادم', company: 'Sanofi', isNotified: false },
+  { id: '7', name_en: 'Nexium 40mg Tablets', name_ar: 'نيكسيوم 40 مجم اقراص', status: 'available', last_updated: 'منذ 3 أيام', alternatives: [{name: 'Esomeprazole 40mg', price: 60}], company: 'AstraZeneca', isNotified: false },
 ];
 
 const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab, count }: any) => {
@@ -160,14 +161,29 @@ export const ShortagesView: React.FC<ShortagesViewProps> = ({ onBack }) => {
                     </div>
                   )}
                   <div className="flex-1">
-                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">البدائل المتاحة</div>
-                    <div className="text-xs font-black text-blue-600 dark:text-blue-400">{item.alternatives_count} بدائل</div>
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">البدائل</div>
+                    <div className="text-xs font-black text-blue-600 dark:text-blue-400">
+                      {item.alternatives.length > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          {item.alternatives.map((alt, i) => (
+                            <span key={i}>{alt.name} ({alt.price}ج)</span>
+                          ))}
+                        </div>
+                      ) : 'لا يوجد'}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="absolute bottom-4 left-5 flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
-                  <Clock size={10} />
-                  <span>{item.last_updated}</span>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                    <Clock size={10} />
+                    <span>{item.last_updated}</span>
+                  </div>
+                  <button 
+                    className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-colors ${item.isNotified ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                  >
+                    {item.isNotified ? 'تم التنبيه' : 'أبلغني عند التوفر'}
+                  </button>
                 </div>
               </MDiv>
             );

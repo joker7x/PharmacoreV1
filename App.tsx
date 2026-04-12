@@ -10,8 +10,10 @@ import { BottomNavigation } from './components/Navigation.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 import { AdminView } from './components/AdminView.tsx';
 import { InvoiceBuilder } from './components/InvoiceBuilder.tsx';
-import { ShortagesView } from './components/ShortagesView.tsx';
+import { InventoryView } from './components/InventoryView.tsx';
 import { CommunityView } from './components/CommunityView.tsx';
+import { UserProfileView } from './components/UserProfileView.tsx';
+import { StockAnalytics } from './components/StockAnalytics.tsx';
 import { getGlobalConfig, syncTelegramUser } from './services/supabase.ts';
 
 const App: React.FC = () => {
@@ -24,6 +26,7 @@ const App: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [currentView, setCurrentView] = useState<AppView>('home');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -167,6 +170,13 @@ const App: React.FC = () => {
 
   const handleNavigate = (view: AppView) => {
     setCurrentView(view);
+    setSelectedUserId(null);
+    scrollToTop();
+  };
+
+  const navigateToProfile = (userId: string) => {
+    setSelectedUserId(userId);
+    setCurrentView('profile');
     scrollToTop();
   };
 
@@ -194,10 +204,12 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={allDrugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={currentUser} />;
-      case 'settings': return <SettingsView user={currentUser} darkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} />;
+      case 'settings': return <SettingsView user={currentUser} darkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} onOpenAnalytics={() => setCurrentView('analytics')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
-      case 'shortages': return <ShortagesView onBack={() => setCurrentView('home')} />;
-      case 'community': return <CommunityView onBack={() => setCurrentView('home')} />;
+      case 'shortages': return <InventoryView onBack={() => setCurrentView('home')} allDrugs={allDrugs} shortageDrugIds={['1', '5']} />;
+      case 'analytics': return <StockAnalytics onBack={() => setCurrentView('settings')} allDrugs={allDrugs} />;
+      case 'community': return <CommunityView onBack={() => setCurrentView('home')} onUserClick={navigateToProfile} />;
+      case 'profile': return <UserProfileView user={currentUser || { id: selectedUserId, name: 'صيدلي', isVerified: true, level: 'gold', points: 1250, role: 'pharmacist' }} onBack={() => setCurrentView('community')} />;
       default: 
         // Mock Gamification Data for Header
         const gamification = {

@@ -1,7 +1,7 @@
 
 // Supabase Configuration
 export const SUPABASE_URL = "https://ywkgtcfdxmsaioqgkomw.supabase.co";
-export const SUPABASE_KEY = "sb_publishable_4U6lDWzwo_wVq7LgXUk7eQ_7rjvKT7A";
+export const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3a2d0Y2ZkeG1zYWlvcWdrb213Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NjA3NDAsImV4cCI6MjA4MDAzNjc0MH0.bdJXBMntTSkS6wdwwwGaBOp2v10hoT-Ajwfg0daopU8";
 
 // Table & View Names
 export const MAIN_TABLE = "drugsfull";

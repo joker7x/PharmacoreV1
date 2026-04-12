@@ -10,9 +10,23 @@ const headers = {
 
 export const searchDrugs = async (query: string): Promise<Drug[]> => {
   try {
-    const encodedQuery = encodeURIComponent(`*${query}*`);
+    const terms = query.trim().split(/\s+/).filter(t => t.length > 0);
+    if (terms.length === 0) return [];
+
+    // Smart Search: Normalize Arabic characters to handle typos (Hamza, Alif, Yeh, Teh Marbuta)
+    // and ensure order independence by requiring all terms to be present.
+    const smartQuery = terms.map(t => {
+      const normalizedTerm = t
+        .replace(/[أإآا]/g, '_')
+        .replace(/[ىي]/g, '_')
+        .replace(/[ةه]/g, '_');
+      
+      const enc = encodeURIComponent(`*${normalizedTerm}*`);
+      return `or(name_en.ilike.${enc},name_ar.ilike.${enc})`;
+    }).join(',');
+
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?or=(name_en.ilike.${encodedQuery},name_ar.ilike.${encodedQuery})&limit=20`,
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?and=(${smartQuery})&limit=20`,
       { headers }
     );
     if (!response.ok) return [];
@@ -178,4 +192,95 @@ export const updateUserPermissions = async (userId: number, updates: any): Promi
       body: JSON.stringify(body)
     });
   } catch (e) {}
+};
+
+export const getDrugsByIds = async (ids: number[]): Promise<Drug[]> => {
+  if (ids.length === 0) return [];
+  try {
+    const idList = ids.join(',');
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?id=in.(${idList})`,
+      { headers }
+    );
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (e) { return []; }
+};
+
+export const searchDrugsSupabase = async (query: string): Promise<any[]> => {
+  try {
+    const terms = query.trim().split(/\s+/).filter(t => t.length > 0);
+    if (terms.length === 0) return [];
+
+    const smartQuery = terms.map(t => {
+      const normalizedTerm = t
+        .replace(/[أإآا]/g, '_')
+        .replace(/[ىي]/g, '_')
+        .replace(/[ةه]/g, '_');
+        
+      const enc = encodeURIComponent(`*${normalizedTerm}*`);
+      return `or(name_en.ilike.${enc},name_ar.ilike.${enc})`;
+    }).join(',');
+
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${MAIN_TABLE}?and=(${smartQuery})&limit=10`,
+      { headers }
+    );
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (e) { 
+    console.error("Supabase Search Error:", e);
+    return []; 
+  }
+};
+
+export const getStock = async (): Promise<any[]> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/pharmacy_stock?select=*`, { headers });
+    return await response.json();
+  } catch (e) { return []; }
+};
+
+export const deleteStockItem = async (id: number): Promise<boolean> => {
+  try {
+    console.log(`Attempting to delete stock item with ID: ${id}`);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/pharmacy_stock?id=eq.${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("Supabase Delete Error:", error);
+      return false;
+    }
+    
+    console.log(`Successfully deleted stock item with ID: ${id}`);
+    return true;
+  } catch (e) {
+    console.error("Supabase Delete Stock Exception:", e);
+    return false;
+  }
+};
+
+export const addStockItem = async (item: any): Promise<any> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/pharmacy_stock`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=representation' },
+      body: JSON.stringify(item)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Supabase Add Stock Error:", errorData);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data[0];
+  } catch (e) { 
+    console.error("Supabase Add Stock Exception:", e);
+    return null; 
+  }
 };

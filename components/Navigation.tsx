@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, MoreHorizontal, FileText, AlertTriangle, Users } from 'lucide-react';
+import { Home, MoreHorizontal, FileText, Package, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AppView } from '../types.ts';
 
@@ -12,7 +12,7 @@ interface BottomNavigationProps {
 const tabs: { id: AppView; label: string; icon: React.ElementType }[] = [
   { id: 'home', label: 'الرئيسية', icon: Home },
   { id: 'community', label: 'المجتمع', icon: Users },
-  { id: 'shortages', label: 'نواقص', icon: AlertTriangle },
+  { id: 'shortages', label: 'المخزون', icon: Package },
   { id: 'settings', label: 'المزيد', icon: MoreHorizontal },
 ];
 

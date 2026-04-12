@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X, Lock, ShieldAlert, Award } from 'lucide-react';
+import { Moon, Info, Settings, ShieldCheck, Smartphone, ChevronLeft, User, ExternalLink, Shield, MessageSquare, Headphones, FileText, ScrollText, X, Lock, ShieldAlert, Award, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SettingsViewProps {
@@ -12,6 +12,7 @@ interface SettingsViewProps {
   isAdmin?: boolean;
   onOpenAdmin: () => void;
   onOpenInvoice: () => void;
+  onOpenAnalytics: () => void;
 }
 
 const SettingSection = React.memo(({ title, children }: { title: string, children?: React.ReactNode }) => (
@@ -76,7 +77,7 @@ const PolicyModal = ({ title, content, onClose }: { title: string, content: stri
   );
 };
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack, isAdmin, onOpenAdmin, onOpenInvoice }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, toggleDarkMode, onBack, isAdmin, onOpenAdmin, onOpenInvoice, onOpenAnalytics }) => {
   // Use any to bypass TypeScript errors for motion props
   const MDiv = motion.div as any;
   const [modal, setModal] = useState<{ title: string, content: string } | null>(null);
@@ -135,6 +136,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ user, darkMode, togg
         )}
 
         <SettingSection title="أدوات الصيدلية">
+            <SettingItem icon={BarChart3} label="تحليلات المخزون" color="blue" action={onOpenAnalytics} />
             <SettingItem icon={FileText} label="منشئ الفواتير" color="emerald" action={onOpenInvoice} isLast />
         </SettingSection>
 

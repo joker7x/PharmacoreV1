@@ -5,6 +5,7 @@ import { CommunityPost, CommunityUser } from '../types.ts';
 
 interface CommunityViewProps {
   onBack: () => void;
+  onUserClick: (userId: string) => void;
 }
 
 // Mock Data
@@ -71,7 +72,7 @@ const mockPosts: CommunityPost[] = [
   }
 ];
 
-export const CommunityView: React.FC<CommunityViewProps> = ({ onBack }) => {
+export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClick }) => {
   const [posts, setPosts] = useState<CommunityPost[]>(mockPosts);
   const [newPostContent, setNewPostContent] = useState('');
   const [showReportModal, setShowReportModal] = useState<string | null>(null);
@@ -200,7 +201,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack }) => {
           <div key={post.id} className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
             {/* Post Header */}
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => onUserClick(post.author.id)}>
                 <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${getLevelColor(post.author.level)} p-[2px]`}>
                   <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center overflow-hidden">
                     <User size={20} className="text-slate-400" />
