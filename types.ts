@@ -1,5 +1,5 @@
 
-export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages' | 'community' | 'profile';
+export type AppView = 'home' | 'settings' | 'admin' | 'invoice' | 'shortages' | 'community' | 'profile' | 'analytics';
 export type TabMode = 'all' | 'changed' | 'fav';
 
 export interface Experience {
@@ -87,6 +87,8 @@ export interface AdminConfig {
   maintenanceTime: string;
   liveSync: boolean;
   strictMode: boolean;
+  aiAnalysis?: boolean;
+  marketCheck?: boolean;
 }
 
 export interface InvoiceItem {

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, ShieldCheck, AlertTriangle, Pill, Send, MoreHorizontal, Flag, ThumbsUp, MessageCircle, Search, User, Award, CheckCircle2, Filter, X } from 'lucide-react';
-import { CommunityPost, CommunityUser } from '../types.ts';
+import { MessageSquare, ShieldCheck, AlertTriangle, Pill, Send, MoreHorizontal, Flag, ThumbsUp, MessageCircle, Search, User, Award, CheckCircle2, Filter, X, Trash2 } from 'lucide-react';
+import { CommunityPost, CommunityUser, Drug } from '../types.ts';
+import { searchDrugsSupabase } from '../services/supabase.ts';
 
 interface CommunityViewProps {
   onBack: () => void;
@@ -77,6 +78,122 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
   const [newPostContent, setNewPostContent] = useState('');
   const [showReportModal, setShowReportModal] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<{ type: 'drug' | 'api', id: string, name: string } | null>(null);
+  const [mentionResults, setMentionResults] = useState<{id: string, name: string, type: 'drug' | 'api' | 'company' | 'location', subtext?: string}[]>([]);
+  const [cursorPosition, setCursorPosition] = useState(0);
+
+  const deletePost = (postId: string) => {
+    setPosts(posts.filter(p => p.id !== postId));
+  };
+
+  const GOVERNORATES = [
+    'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'البحر الأحمر', 'البحيرة', 'الفيوم', 'الغربية', 'الإسماعيلية', 'المنوفية', 'المنيا', 'القليوبية', 'الوادي الجديد', 'السويس', 'الشرقية', 'جنوب سيناء', 'شمال سيناء', 'بني سويف', 'بورسعيد', 'دمياط', 'سوهاج', 'قنا', 'كفر الشيخ', 'مطروح', 'الأقصر', 'أسوان', 'أسيوط'
+  ];
+
+  const handleContentChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const content = e.target.value;
+    const position = e.target.selectionStart;
+    setNewPostContent(content);
+    setCursorPosition(position);
+
+    const lastAt = content.lastIndexOf('@', position - 1);
+    if (lastAt !== -1) {
+      const query = content.slice(lastAt + 1, position).trim();
+      if (query.length >= 2) {
+        // Search Drugs
+        const drugResults = await searchDrugsSupabase(query);
+        const results: any[] = drugResults.map(d => ({
+          id: d.id,
+          name: d.name_en,
+          subtext: d.name_ar,
+          type: 'drug'
+        }));
+
+        // Search Governorates
+        const govMatches = GOVERNORATES.filter(g => g.includes(query)).map(g => ({
+          id: g,
+          name: g,
+          type: 'location'
+        }));
+
+        // Add some common companies if they match (or extract from drug results)
+        const companies = Array.from(new Set(drugResults.map(d => d.company).filter(Boolean))).map(c => ({
+          id: c as string,
+          name: c as string,
+          type: 'company'
+        }));
+
+        setMentionResults([...govMatches, ...results, ...companies].slice(0, 10));
+        return;
+      }
+    }
+    setMentionResults([]);
+  };
+
+  const insertMention = (item: {name: string, type: string}) => {
+    const lastAt = newPostContent.lastIndexOf('@', cursorPosition - 1);
+    const before = newPostContent.slice(0, lastAt);
+    const after = newPostContent.slice(cursorPosition);
+    
+    // We'll use a prefix in the tag to identify the type during rendering, but keep it clean
+    // Format: @Type:Name
+    const mentionText = `@${item.type}:${item.name.replace(/\s+/g, '_')} `;
+    setNewPostContent(before + mentionText + after);
+    setMentionResults([]);
+  };
+
+  const cleanMentionName = (name: string) => {
+    return name
+      .replace(/powder for i\.v\. inf\. vial/gi, 'Vial')
+      .replace(/powder for solution for injection/gi, 'Inj')
+      .replace(/film coated tablets/gi, 'Tab')
+      .replace(/hard gelatin capsules/gi, 'Cap')
+      .replace(/oral suspension/gi, 'Susp')
+      .replace(/_/g, ' ')
+      .trim();
+  };
+
+  const renderContent = (content: string) => {
+    // Remove all mentions from the content for display in the post body
+    return content.replace(/@[a-z]+:[^\s]+/g, '').trim();
+  };
+
+  const renderTags = (content: string) => {
+    const tags: {type: string, name: string}[] = [];
+    const matches = content.matchAll(/@([a-z]+):([^\s]+)/g);
+    for (const match of matches) {
+      tags.push({ type: match[1], name: match[2] });
+    }
+
+    if (tags.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {tags.map((tag, i) => {
+          const cleanedName = cleanMentionName(tag.name);
+          let colorClass = "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50";
+          let Icon = Pill;
+
+          if (tag.type === 'location') {
+            colorClass = "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50";
+            Icon = Search;
+          } else if (tag.type === 'company') {
+            colorClass = "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50";
+            Icon = ShieldCheck;
+          }
+
+          return (
+            <span 
+              key={i} 
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-black text-[11px] border shadow-sm ${colorClass}`}
+            >
+              <Icon size={10} className="shrink-0" />
+              {cleanedName}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
 
   const filteredPosts = useMemo(() => {
     if (!activeFilter) return posts;
@@ -148,25 +265,60 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
       </header>
 
       {/* Create Post */}
-      <div className="bg-white dark:bg-slate-900 rounded-[28px] p-4 mb-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-[28px] p-4 mb-6 border border-slate-200 dark:border-slate-800 shadow-sm relative">
         <div className="flex gap-3 mb-3">
           <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getLevelColor(currentUser.level)} p-[2px] shrink-0`}>
             <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center overflow-hidden">
               <User size={20} className="text-slate-400" />
             </div>
           </div>
-          <textarea
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder="شارك معلومة، اسأل عن بديل، أو أبلغ عن نقص..."
-            className="w-full bg-transparent resize-none outline-none text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 min-h-[60px]"
-          />
+          <div className="flex-1 relative">
+            <textarea
+              value={newPostContent}
+              onChange={handleContentChange}
+              placeholder="اكتب منشورك هنا... استخدم @ للإشارة لدواء أو شركة"
+              className="w-full bg-transparent resize-none outline-none text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 min-h-[80px]"
+            />
+            
+            {/* Mention Suggestions */}
+            <AnimatePresence>
+              {mentionResults.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto no-scrollbar"
+                >
+                  {mentionResults.map((item, index) => (
+                    <button
+                      key={`${item.id}-${index}`}
+                      onClick={() => insertMention(item)}
+                      className="w-full text-right px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        {item.type === 'drug' && <Pill size={14} className="text-blue-500" />}
+                        {item.type === 'location' && <Search size={14} className="text-emerald-500" />}
+                        {item.type === 'company' && <ShieldCheck size={14} className="text-amber-500" />}
+                        <span className="text-xs font-black text-slate-900 dark:text-white truncate">{item.name}</span>
+                      </div>
+                      {item.subtext && <span className="text-[10px] font-bold text-slate-400 truncate">{item.subtext}</span>}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40">
-            <Pill size={14} />
-            <span>إشارة لدواء</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setNewPostContent(prev => prev + '@')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40"
+            >
+              <Pill size={14} />
+              <span>إشارة @</span>
+            </button>
+          </div>
           <button 
             onClick={handlePost}
             disabled={!newPostContent.trim()}
@@ -222,45 +374,31 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
 
             {/* Post Content */}
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4 font-medium">
-              {post.content}
+              {renderContent(post.content)}
             </p>
 
-            {/* Tags */}
-            {(post.mentionedDrugs.length > 0 || post.mentionedActiveIngredients.length > 0) && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {post.mentionedDrugs.map(drug => (
-                  <button 
-                    key={drug.id} 
-                    onClick={() => setActiveFilter({ type: 'drug', id: drug.id, name: drug.name })}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[11px] font-black hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
-                  >
-                    <Pill size={12} />
-                    {drug.name}
-                  </button>
-                ))}
-                {post.mentionedActiveIngredients.map(api => (
-                  <button 
-                    key={api} 
-                    onClick={() => setActiveFilter({ type: 'api', id: api, name: api })}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-black hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-                  >
-                    <Search size={12} />
-                    {api}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Tags Section Below Post */}
+            {renderTags(post.content)}
 
             {/* Actions */}
             <div className="flex items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <ThumbsUp size={18} />
-                <span className="text-xs font-bold">{post.likes}</span>
-              </button>
-              <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <MessageCircle size={18} />
-                <span className="text-xs font-bold">{post.commentsCount}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => deletePost(post.id)}
+                  className="p-2 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                  title="حذف المنشور"
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <ThumbsUp size={18} />
+                  <span className="text-xs font-bold">{post.likes}</span>
+                </button>
+                <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <MessageCircle size={18} />
+                  <span className="text-xs font-bold">{post.commentsCount}</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}

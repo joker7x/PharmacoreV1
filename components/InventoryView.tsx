@@ -51,17 +51,88 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
   const [searchResults, setSearchResults] = useState<Drug[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+
+  const toggleItemSelection = (id: number) => {
+    const next = new Set(selectedItems);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedItems(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredItems.map(item => item.id!)));
+    }
+  };
+
+  const exportData = (format: 'excel' | 'csv' | 'text') => {
+    const dataToExport = filteredItems.filter(item => selectedItems.has(item.id!));
+    if (dataToExport.length === 0) {
+      alert("يرجى اختيار أصناف للتصدير");
+      return;
+    }
+
+    if (format === 'text') {
+      const textContent = dataToExport.map(item =>
+        `الصنف: ${item.name_ar} (${item.name_en})\nالكمية: ${item.quantity}\nسعر الشراء: ${item.purchase_price}\nسعر البيع: ${item.selling_price}\nتاريخ الانتهاء: ${item.expiry_date}\n-------------------`
+      ).join('\n');
+      const blob = new Blob(['\uFEFF', textContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "Inventory.txt");
+      link.click();
+      return;
+    }
+
+    const worksheetData = dataToExport.map(item => ({
+      'اسم الصنف (إنجليزي)': item.name_en,
+      'اسم الصنف (عربي)': item.name_ar,
+      'الكمية': item.quantity,
+      'سعر الشراء': item.purchase_price,
+      'سعر البيع': item.selling_price,
+      'تاريخ الانتهاء': item.expiry_date
+    }));
+
+    if (format === 'excel') {
+      import('xlsx').then(XLSX => {
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
+        XLSX.writeFile(workbook, "Inventory.xlsx");
+      });
+    } else {
+      import('xlsx').then(XLSX => {
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Inventory.csv");
+        link.click();
+      });
+    }
+  };
 
   const handleDrugSearch = async (query: string) => {
     setDrugSearch(query);
     if (query.length > 2) {
       const results = await searchDrugsSupabase(query);
       setSearchResults(results.map(d => ({
-        drug_no: d.id?.toString(), // Use internal ID as the reference
+        drug_no: d.id?.toString() || '',
         name_en: d.name_en,
         name_ar: d.name_ar,
         price_new: d.price_new,
-        dosage_form: d.dosage_form
+        price_old: d.price_old || null,
+        dosage_form: d.dosage_form,
+        api_updated_at: d.api_updated_at || null
       })));
     } else {
       setSearchResults([]);
@@ -69,13 +140,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
   };
 
   const selectDrug = (drug: Drug) => {
-    const sellingPrice = drug.price_new ? parseFloat(drug.price_new) : 0;
+    const sellingPrice = drug.price_new ? Number(drug.price_new) : 0;
     const discount = newItem.discount_percentage || 0;
     const purchasePrice = sellingPrice * (1 - discount / 100);
     
     setNewItem({
       ...newItem,
-      drug_no: drug.drug_no?.toString() || drug.id?.toString(),
+      drug_no: drug.drug_no?.toString() || drug.id?.toString() || '',
       name_en: drug.name_en || '',
       name_ar: drug.name_ar || '',
       selling_price: sellingPrice,
@@ -211,6 +282,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
         </button>
       </header>
 
+      {/* Export Controls */}
+      <div className="flex gap-2 px-2 mb-4">
+        <button onClick={toggleSelectAll} className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-300">
+          {selectedItems.size === filteredItems.length ? 'إلغاء الكل' : 'تحديد الكل'}
+        </button>
+        <button onClick={() => exportData('excel')} className="px-4 py-2 rounded-xl bg-green-600 text-white text-xs font-black">Excel</button>
+        <button onClick={() => exportData('csv')} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-black">CSV</button>
+        <button onClick={() => exportData('text')} className="px-4 py-2 rounded-xl bg-slate-600 text-white text-xs font-black">Text</button>
+      </div>
+
       {/* Delete Confirmation Modal */}
       {deletingId !== null && (
         <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -314,7 +395,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
         {categories.map(cat => (
           <button
             key={cat}
-            onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
+            onClick={() => setSelectedCategory(cat === selectedCategory ? null : (cat as string))}
             className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all ${
               selectedCategory === cat
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
@@ -333,9 +414,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
           filteredItems.map(item => (
             <div key={item.id || item.drug_no} className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
               <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{item.name_en}</h3>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{item.name_ar}</p>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedItems.has(item.id!)}
+                    onChange={() => toggleItemSelection(item.id!)}
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{item.name_en}</h3>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{item.name_ar}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {item.id && (
