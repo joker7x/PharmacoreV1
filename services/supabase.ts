@@ -429,7 +429,6 @@ export const addLike = async (postId: string, userId: string): Promise<boolean> 
       .from('posts')
       .insert({ 
         id,
-        post_id: postId, // Keeping this for schema compatibility if it exists, but primary is content
         user_id: userId,
         content: `__LIKE__${postId}`,
         created_at
