@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, ShieldCheck, AlertTriangle, Pill, Send, MoreHorizontal, Flag, ThumbsUp, MessageCircle, Search, User, Award, CheckCircle2, Filter, X, Trash2 } from 'lucide-react';
-import { CommunityPost, CommunityUser, Drug } from '../types.ts';
-import { searchDrugsSupabase } from '../services/supabase.ts';
+import { MessageSquare, ShieldCheck, AlertTriangle, Pill, Send, MoreHorizontal, Flag, ThumbsUp, MessageCircle, Search, User, Award, CheckCircle2, Filter, X, Trash2, Clock, Calendar } from 'lucide-react';
+import { CommunityPost, CommunityUser, Drug, CommunityComment } from '../types.ts';
+import { getPosts, addPost, deletePost as deletePostSupabase, deleteComment as deleteCommentSupabase, updateCommentReactions, getLikesCount, getCommentsCount, getIsLiked, addLike, removeLike, searchDrugsSupabase, reportUser, logActivity, addComment, getComments } from '../services/supabase.ts';
+import { formatDistanceToNow, format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 interface CommunityViewProps {
   onBack: () => void;
   onUserClick: (userId: string) => void;
+  userId: string;
 }
 
 // Mock Data
@@ -73,16 +76,365 @@ const mockPosts: CommunityPost[] = [
   }
 ];
 
-export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClick }) => {
-  const [posts, setPosts] = useState<CommunityPost[]>(mockPosts);
+export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClick, userId }) => {
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [postComments, setPostComments] = useState<Record<string, CommunityComment[]>>({});
+  const [isCommentingLoading, setIsCommentingLoading] = useState<Record<string, boolean>>({});
+
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      
+      const distance = formatDistanceToNow(date, { addSuffix: true, locale: ar });
+      const fullDate = format(date, 'eeee, d MMMM yyyy', { locale: ar });
+      const time = format(date, 'hh:mm a', { locale: ar });
+      
+      return { distance, fullDate, time };
+    } catch (e) {
+      return { distance: dateString, fullDate: '', time: '' };
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    if (userId === 'guest') {
+      alert('يرجى تسجيل الدخول أولاً لتتمكن من الإعجاب بالمنشورات.');
+      return;
+    }
+
+    const isLiked = likedPosts.has(postId);
+    const success = isLiked 
+      ? await removeLike(postId, userId)
+      : await addLike(postId, userId);
+
+    if (success) {
+      if (isLiked) {
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(postId);
+          return newSet;
+        });
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p));
+      } else {
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          newSet.add(postId);
+          return newSet;
+        });
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
+        logActivity(userId, 'like', 1, postId);
+      }
+    } else {
+      console.error('Failed to update like for post:', postId);
+      alert('عذراً، فشل تحديث الإعجاب. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
+  const handleCommentToggle = async (postId: string) => {
+    if (showComments === postId) {
+      setShowComments(null);
+    } else {
+      setShowComments(postId);
+      if (!postComments[postId]) {
+        setIsCommentingLoading(prev => ({ ...prev, [postId]: true }));
+        try {
+          const comments = await getComments(postId);
+          setPostComments(prev => ({ 
+            ...prev, 
+            [postId]: comments.map(c => ({
+              id: c.id,
+              postId: c.post_id,
+              parentId: c.parent_id,
+              author: { id: c.user_id, name: 'مستخدم', isVerified: false, level: 'bronze', points: 0, role: 'pharmacist' },
+              content: c.content,
+              reactions: c.reactions,
+              createdAt: c.created_at
+            }))
+          }));
+        } catch (error) {
+          console.error("Error loading comments:", error);
+          alert('فشل تحميل التعليقات. يرجى المحاولة مرة أخرى.');
+        } finally {
+          setIsCommentingLoading(prev => ({ ...prev, [postId]: false }));
+        }
+      }
+    }
+  };
+
+  const handleSendComment = async (postId: string) => {
+    const content = commentInputs[postId];
+    if (!content?.trim() || isCommentingLoading[postId]) return;
+
+    const parentId = replyingToCommentId;
+    console.log("Sending comment for post:", postId, "Parent:", parentId);
+    setIsCommentingLoading(prev => ({ ...prev, [postId]: true }));
+    
+    try {
+      // Optimistic Update: Add comment to UI immediately for better UX
+      const tempId = 'temp-' + Date.now();
+      const commentObj: CommunityComment = {
+        id: tempId,
+        postId: postId,
+        parentId: parentId || undefined,
+        author: { 
+          id: userId, 
+          name: 'أنت', 
+          isVerified: true, 
+          level: 'gold' as const, 
+          points: 0, 
+          role: 'pharmacist' as const 
+        },
+        content: content,
+        createdAt: new Date().toISOString()
+      };
+      
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), commentObj]
+      }));
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      setReplyingToCommentId(null);
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentsCount: (p.commentsCount || 0) + 1 } : p));
+
+      // Actual API Call
+      const newComment = await addComment(postId, content, userId, parentId || undefined);
+      
+      if (newComment) {
+        // Replace temp comment with real one from server
+        setPostComments(prev => ({
+          ...prev,
+          [postId]: (prev[postId] || []).map(c => c.id === tempId ? {
+            ...c,
+            id: newComment.id,
+            createdAt: newComment.created_at
+          } : c)
+        }));
+        logActivity(userId, 'comment', 2, postId);
+        console.log("Comment successfully saved to database.");
+      } else {
+        // Rollback if failed
+        setPostComments(prev => ({
+          ...prev,
+          [postId]: (prev[postId] || []).filter(c => c.id !== tempId)
+        }));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p));
+        setCommentInputs(prev => ({ ...prev, [postId]: content })); // Restore input
+        alert('فشل حفظ التعليق في قاعدة البيانات. يرجى المحاولة مرة أخرى.');
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleSendComment:", error);
+      alert('حدث خطأ غير متوقع. يرجى التأكد من اتصالك بالإنترنت.');
+    } finally {
+      setIsCommentingLoading(prev => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const handleReaction = async (comment: CommunityComment, emoji: string) => {
+    const currentReactions = comment.reactions || {};
+    const newReactions = { ...currentReactions };
+    newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+    
+    const success = await updateCommentReactions(comment.id, newReactions);
+    if (success) {
+      setPostComments(prev => ({
+        ...prev,
+        [comment.postId]: (prev[comment.postId] || []).map(c => 
+          c.id === comment.id ? { ...c, reactions: newReactions } : c
+        )
+      }));
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, postId: string) => {
+    const success = await deleteCommentSupabase(commentId, userId);
+    if (success) {
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: (prev[postId] || []).filter(c => c.id !== commentId)
+      }));
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p));
+    } else {
+      alert('فشل حذف التعليق.');
+    }
+  };
+
+  const [activeReactionMenu, setActiveReactionMenu] = useState<string | null>(null);
+
+  // Close reaction menu on scroll
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (activeReactionMenu) setActiveReactionMenu(null);
+    };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [activeReactionMenu]);
+
+  const renderComment = (comment: CommunityComment, allComments: CommunityComment[]) => {
+    const replies = allComments.filter(c => c.parentId === comment.id);
+    
+    return (
+      <div key={comment.id} className="relative mt-3">
+        {/* Thread Line for Nested Comments */}
+        {comment.parentId && (
+          <div className="absolute -left-4 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700 ml-3" />
+        )}
+        
+        <div className="flex gap-2">
+          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 z-10">
+            <User size={14} className="text-slate-500" />
+          </div>
+          <div className="flex-1">
+            <div className={`p-3 rounded-2xl ${comment.parentId ? 'bg-slate-50 dark:bg-slate-800/30' : 'bg-slate-50 dark:bg-slate-800/50'} border border-slate-100 dark:border-slate-800`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-black text-slate-900 dark:text-white">{comment.author.name}</span>
+                <span className="text-[8px] text-slate-400">{typeof formatTime(comment.createdAt) === 'object' ? (formatTime(comment.createdAt) as any).distance : formatTime(comment.createdAt)}</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed">{comment.content}</p>
+            </div>
+            
+            {/* Action Bar */}
+            <div className="flex items-center gap-3 mt-1 px-1">
+              <div className="relative">
+                <button 
+                  onClick={() => setActiveReactionMenu(activeReactionMenu === comment.id ? null : comment.id)}
+                  className="text-[10px] font-bold text-slate-500 hover:text-blue-600 transition-colors"
+                >
+                  تفاعل
+                </button>
+                
+                {/* Reaction Menu */}
+                <AnimatePresence>
+                  {activeReactionMenu === comment.id && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                      className="absolute left-0 bottom-full mb-3 bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex gap-1 z-30 min-w-max"
+                      style={{ transformOrigin: 'bottom left' }}
+                    >
+                      {['❤️', '👍', '😂', '😮', '🔥', '👏'].map(emoji => (
+                        <button 
+                          key={emoji} 
+                          onClick={() => { handleReaction(comment, emoji); setActiveReactionMenu(null); }} 
+                          className="w-10 h-10 flex items-center justify-center text-[22px] hover:scale-125 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-all active:scale-90"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button 
+                onClick={() => {
+                  setReplyingToCommentId(comment.id);
+                  setCommentInputs(prev => ({ ...prev, [comment.postId]: `@${comment.author.name} ` }));
+                }}
+                className="text-[10px] font-bold text-slate-500 hover:text-blue-600 transition-colors"
+              >
+                رد
+              </button>
+
+              {comment.author.id === userId && (
+                <button 
+                  onClick={() => handleDeleteComment(comment.id, comment.postId)}
+                  className="text-[10px] font-bold text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  حذف
+                </button>
+              )}
+              
+              {/* Reactions Display */}
+              <div className="flex gap-1">
+                {Object.entries(comment.reactions || {}).map(([emoji, count]) => (
+                  <span key={emoji} className="flex items-center gap-0.5 text-[9px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 px-1.5 py-0.5 rounded-full shadow-sm">
+                    {emoji} <span className="font-bold">{count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Nested Replies Rendering */}
+        {replies.length > 0 && (
+          <div className="ml-6 space-y-1">
+            {replies.map(reply => renderComment(reply, allComments))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  React.useEffect(() => {
+    const loadPosts = async () => {
+      const data = await getPosts(userId);
+      const likedSet = new Set<string>();
+      
+      const postsWithCounts = await Promise.all(data.map(async (p) => {
+        const likes = await getLikesCount(p.id);
+        const commentsCount = await getCommentsCount(p.id);
+        const isLiked = await getIsLiked(p.id, userId);
+        
+        if (isLiked) {
+          likedSet.add(p.id);
+        }
+
+        return {
+          id: p.id,
+          author: { 
+            id: p.user_id, 
+            name: 'مستخدم', 
+            isVerified: false, 
+            level: 'bronze' as const, 
+            points: 0, 
+            role: 'pharmacist' as const 
+          },
+          content: p.content,
+          mentionedDrugs: [],
+          mentionedActiveIngredients: [],
+          likes,
+          commentsCount,
+          createdAt: p.created_at
+        };
+      }));
+      
+      setLikedPosts(likedSet);
+      setPosts(postsWithCounts);
+      setLoading(false);
+    };
+    loadPosts();
+  }, [userId]);
+
   const [newPostContent, setNewPostContent] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
   const [showReportModal, setShowReportModal] = useState<string | null>(null);
+
+  const handleReport = async (reason: string) => {
+    if (showReportModal) {
+      const post = posts.find(p => p.id === showReportModal);
+      if (post) {
+        await reportUser(post.author.id, userId, reason);
+        alert('تم إرسال البلاغ بنجاح');
+      }
+      setShowReportModal(null);
+    }
+  };
   const [activeFilter, setActiveFilter] = useState<{ type: 'drug' | 'api', id: string, name: string } | null>(null);
   const [mentionResults, setMentionResults] = useState<{id: string, name: string, type: 'drug' | 'api' | 'company' | 'location', subtext?: string}[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
 
-  const deletePost = (postId: string) => {
-    setPosts(posts.filter(p => p.id !== postId));
+  const deletePost = async (postId: string) => {
+    const success = await deletePostSupabase(postId, userId);
+    if (success) {
+      setPosts(posts.filter(p => p.id !== postId));
+    }
   };
 
   const GOVERNORATES = [
@@ -218,22 +570,41 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
     }
   };
 
-  const handlePost = () => {
-    if (!newPostContent.trim()) return;
+  const handlePost = async () => {
+    console.log("handlePost triggered, content:", newPostContent);
+    if (!newPostContent.trim() || isPosting) {
+      console.log("handlePost aborted: content empty or isPosting is true");
+      return;
+    }
     
-    const newPost: CommunityPost = {
-      id: `p${Date.now()}`,
-      author: currentUser,
-      content: newPostContent,
-      mentionedDrugs: [], // In a real app, we'd extract these from the content or a tagging UI
-      mentionedActiveIngredients: [],
-      likes: 0,
-      commentsCount: 0,
-      createdAt: 'الآن'
-    };
-    
-    setPosts([newPost, ...posts]);
-    setNewPostContent('');
+    setIsPosting(true);
+    try {
+      console.log("Attempting to add post with userId:", userId);
+      const addedPost = await addPost({ content: newPostContent }, userId);
+      console.log("addPost result:", addedPost);
+      if (addedPost) {
+        await logActivity(userId, 'post', 10, addedPost.id);
+        const newPost: CommunityPost = {
+          id: addedPost.id,
+          author: { id: userId, name: 'مستخدم', isVerified: false, level: 'bronze', points: 0, role: 'pharmacist' },
+          content: addedPost.content,
+          mentionedDrugs: [],
+          mentionedActiveIngredients: [],
+          likes: 0,
+          commentsCount: 0,
+          createdAt: 'الآن'
+        };
+        setPosts([newPost, ...posts]);
+        setNewPostContent('');
+      } else {
+        alert('حدث خطأ أثناء نشر المنشور. يرجى التأكد من اتصالك بالإنترنت.');
+      }
+    } catch (error) {
+      console.error("Post creation error:", error);
+      alert('حدث خطأ غير متوقع.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   return (
@@ -321,10 +692,14 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
           </div>
           <button 
             onClick={handlePost}
-            disabled={!newPostContent.trim()}
+            disabled={!newPostContent.trim() || isPosting}
             className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 disabled:bg-slate-300 dark:disabled:bg-slate-700 transition-all active:scale-95"
           >
-            <Send size={18} className="mr-1" />
+            {isPosting ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send size={18} className="mr-1" />
+            )}
           </button>
         </div>
       </div>
@@ -349,59 +724,173 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
           )}
         </AnimatePresence>
 
-        {filteredPosts.map(post => (
-          <div key={post.id} className="bg-white dark:bg-slate-900 rounded-[28px] p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
-            {/* Post Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => onUserClick(post.author.id)}>
-                <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${getLevelColor(post.author.level)} p-[2px]`}>
-                  <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center overflow-hidden">
-                    <User size={20} className="text-slate-400" />
+        {filteredPosts.map(post => {
+          const timeData = formatTime(post.createdAt);
+          const isLiked = likedPosts.has(post.id);
+          const isCommenting = showComments === post.id;
+
+          return (
+            <div key={post.id} className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+              {/* Time Badge - Top Left Floating */}
+              <div className="absolute top-4 left-4 flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1 text-[9px] font-black text-white bg-blue-600 px-2.5 py-1 rounded-full shadow-lg shadow-blue-500/30">
+                  <Clock size={10} />
+                  <span>{typeof timeData === 'object' ? timeData.distance : timeData}</span>
+                </div>
+                {typeof timeData === 'object' && timeData.time && (
+                  <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">
+                    {timeData.time}
+                  </div>
+                )}
+              </div>
+
+              {/* Post Header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onUserClick(post.author.id)}>
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${getLevelColor(post.author.level)} p-[1.5px] shadow-lg shadow-blue-500/10`}>
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-[14px] flex items-center justify-center overflow-hidden">
+                      <User size={22} className="text-slate-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-black text-[15px] text-slate-900 dark:text-white">{post.author.name}</span>
+                      {post.author.isVerified && <CheckCircle2 size={14} className="text-blue-500" />}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                      {post.author.role === 'pharmacist' ? 'صيدلي متخصص' : 'مستخدم'}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-black text-sm text-slate-900 dark:text-white">{post.author.name}</span>
-                    {post.author.isVerified && <CheckCircle2 size={14} className="text-blue-500" />}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{post.createdAt}</div>
+              </div>
+
+              {/* Post Content */}
+              <div className="relative mb-5">
+                <p className="text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                  {renderContent(post.content)}
+                </p>
+              </div>
+
+              {/* Tags Section Below Post */}
+              {renderTags(post.content)}
+
+              {/* Actions Bar */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLike(post.id);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all active:scale-90 ${
+                      isLiked 
+                        ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border border-rose-100 dark:border-rose-800/50' 
+                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <ThumbsUp size={18} className={isLiked ? 'fill-current' : ''} />
+                    <span className="text-xs font-black">{post.likes}</span>
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleCommentToggle(post.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all active:scale-90 ${
+                      isCommenting
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-100 dark:border-blue-800/50'
+                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <MessageCircle size={18} />
+                    <span className="text-xs font-black">{post.commentsCount || 0}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {post.author.id === userId ? (
+                    <button 
+                      onClick={() => deletePost(post.id)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 hover:bg-rose-100 transition-all active:scale-95"
+                    >
+                      <Trash2 size={16} />
+                      <span className="text-[10px] font-black">حذف</span>
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setShowReportModal(post.id)}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-200"
+                    >
+                      <Flag size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <button onClick={() => setShowReportModal(post.id)} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <MoreHorizontal size={18} />
-              </button>
+
+              {/* Interactive Comments Area */}
+              <AnimatePresence>
+                {isCommenting && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50"
+                  >
+                    {/* Comments List */}
+                    <div className="space-y-3 mb-4 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+                      {postComments[post.id]
+                        ?.filter(c => !c.parentId)
+                        .map(comment => renderComment(comment, postComments[post.id] || []))}
+                      
+                      {(!postComments[post.id] || postComments[post.id].length === 0) && !isCommentingLoading[post.id] && (
+                        <div className="flex flex-col items-center justify-center py-6 opacity-40">
+                          <MessageCircle size={32} className="text-slate-300 mb-2" />
+                          <p className="text-[10px] font-bold text-slate-400">لا توجد تعليقات بعد</p>
+                        </div>
+                      )}
+                      {isCommentingLoading[post.id] && (
+                        <div className="flex justify-center py-4">
+                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Comment Input */}
+                    <div className="flex flex-col gap-2">
+                      {replyingToCommentId && (
+                        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg text-[10px] text-blue-600 font-bold">
+                          <span>ترد على تعليق</span>
+                          <button onClick={() => { setReplyingToCommentId(null); setCommentInputs(prev => ({ ...prev, [post.id]: '' })); }} className="text-rose-500">إلغاء</button>
+                        </div>
+                      )}
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1 bg-slate-50 dark:bg-slate-800 rounded-2xl p-1 flex items-center border border-slate-100 dark:border-slate-700">
+                          <input 
+                            type="text" 
+                            value={commentInputs[post.id] || ''}
+                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendComment(post.id)}
+                            placeholder="اكتب تعليقك هنا..."
+                            className="flex-1 bg-transparent border-none px-4 py-2 text-xs font-medium outline-none text-slate-900 dark:text-white w-full"
+                          />
+                          <button 
+                            onClick={() => handleSendComment(post.id)}
+                            disabled={isCommentingLoading[post.id] || !commentInputs[post.id]?.trim()}
+                            className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 active:scale-90 transition-transform disabled:opacity-50 shrink-0"
+                          >
+                            {isCommentingLoading[post.id] ? (
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Send size={14} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-
-            {/* Post Content */}
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4 font-medium">
-              {renderContent(post.content)}
-            </p>
-
-            {/* Tags Section Below Post */}
-            {renderTags(post.content)}
-
-            {/* Actions */}
-            <div className="flex items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => deletePost(post.id)}
-                  className="p-2 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                  title="حذف المنشور"
-                >
-                  <Trash2 size={16} />
-                </button>
-                <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  <ThumbsUp size={18} />
-                  <span className="text-xs font-bold">{post.likes}</span>
-                </button>
-                <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  <MessageCircle size={18} />
-                  <span className="text-xs font-bold">{post.commentsCount}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Smart Report Modal */}
@@ -432,7 +921,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onBack, onUserClic
                   'محتوى غير لائق أو مسيء',
                   'إزعاج (Spam)'
                 ].map(reason => (
-                  <button key={reason} onClick={() => setShowReportModal(null)} className="w-full text-right p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
+                  <button key={reason} onClick={() => handleReport(reason)} className="w-full text-right p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
                     {reason}
                   </button>
                 ))}

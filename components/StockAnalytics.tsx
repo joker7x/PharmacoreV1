@@ -20,16 +20,17 @@ import { getStock, getDrugsByIds } from '../services/supabase.ts';
 interface StockAnalyticsProps {
   onBack: () => void;
   allDrugs: Drug[];
+  userId: string;
 }
 
-export const StockAnalytics: React.FC<StockAnalyticsProps> = ({ onBack, allDrugs }) => {
+export const StockAnalytics: React.FC<StockAnalyticsProps> = ({ onBack, allDrugs, userId }) => {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [localDrugCache, setLocalDrugCache] = useState<Drug[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
-      const data = await getStock();
+      const data = await getStock(userId);
       const mappedStock = data.map(item => ({
         id: item.id,
         drug_no: item.drug_id.toString(),
@@ -53,7 +54,7 @@ export const StockAnalytics: React.FC<StockAnalyticsProps> = ({ onBack, allDrugs
       setLoading(false);
     };
     loadData();
-  }, []);
+  }, [userId]);
 
   const stats = useMemo(() => {
     const combinedDrugs = [...allDrugs, ...localDrugCache];

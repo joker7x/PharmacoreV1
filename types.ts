@@ -45,6 +45,16 @@ export interface CommunityPost {
   isReported?: boolean;
 }
 
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  parentId?: string;
+  author: CommunityUser;
+  content: string;
+  createdAt: string;
+  reactions?: Record<string, number>;
+}
+
 export interface Drug {
   drug_no: string;           
   name_en: string;

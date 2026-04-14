@@ -2,22 +2,23 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Trash2, Package, TrendingUp, AlertTriangle, Search, Clock, CheckCircle2, TrendingDown, Plus } from 'lucide-react';
 import { StockItem, Drug } from '../types.ts';
-import { getStock, addStockItem, searchDrugsSupabase, deleteStockItem, getDrugsByIds } from '../services/supabase.ts';
+import { getStock, addStockItem, searchDrugsSupabase, deleteStockItem, getDrugsByIds, logActivity } from '../services/supabase.ts';
 
 interface InventoryViewProps {
   onBack: () => void;
   allDrugs: Drug[];
   shortageDrugIds: string[];
+  userId: string;
 }
 
-export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, shortageDrugIds }) => {
+export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, shortageDrugIds, userId }) => {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [localDrugCache, setLocalDrugCache] = useState<Drug[]>([]);
 
   React.useEffect(() => {
     const loadInventory = async () => {
-      const data = await getStock();
+      const data = await getStock(userId);
       const mappedStock = data.map(item => ({
         id: item.id,
         drug_no: item.drug_id.toString(),
@@ -42,7 +43,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
     };
 
     loadInventory();
-  }, []);
+  }, [userId]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -189,9 +190,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
 
     console.log("Sending payload to Supabase:", payload);
 
-    const addedItem = await addStockItem(payload);
+    const addedItem = await addStockItem(payload, userId);
     
     if (addedItem) {
+      await logActivity(userId, 'add_stock', 5, String(addedItem.id));
       console.log("Item added successfully:", addedItem);
       setStockItems([...stockItems, { 
         ...newItem as StockItem, 
@@ -216,7 +218,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
     if (deletingId === null) return;
     
     console.log("Confirming delete for ID:", deletingId);
-    const success = await deleteStockItem(deletingId);
+    const success = await deleteStockItem(deletingId, userId);
     
     if (success) {
       console.log("Delete successful, updating state");
@@ -225,7 +227,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, allDrugs, 
     } else {
       console.error("Delete failed for ID:", deletingId);
       setDeletingId(null);
-      // We could add a temporary error state here if needed
     }
   };
 

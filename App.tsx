@@ -14,7 +14,7 @@ import { InventoryView } from './components/InventoryView.tsx';
 import { CommunityView } from './components/CommunityView.tsx';
 import { UserProfileView } from './components/UserProfileView.tsx';
 import { StockAnalytics } from './components/StockAnalytics.tsx';
-import { getGlobalConfig, syncTelegramUser } from './services/supabase.ts';
+import { getGlobalConfig, syncTelegramUser, logSession } from './services/supabase.ts';
 
 const App: React.FC = () => {
   const MDiv = motion.div as any;
@@ -33,6 +33,21 @@ const App: React.FC = () => {
   });
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        const deviceType = /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+        if (currentUser?.id) {
+          logSession(String(currentUser.id), duration, deviceType).catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [currentUser]);
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
@@ -206,9 +221,9 @@ const App: React.FC = () => {
       case 'admin': return <AdminView onBack={() => setCurrentView('home')} drugsCount={allDrugs.length} config={config} onUpdateConfig={c => setConfig({...config, ...c})} currentUser={currentUser} />;
       case 'settings': return <SettingsView user={currentUser} darkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onClearFavorites={() => {}} onBack={() => setCurrentView('home')} isAdmin={isAdmin} onOpenAdmin={() => setCurrentView('admin')} onOpenInvoice={() => setCurrentView('invoice')} onOpenAnalytics={() => setCurrentView('analytics')} />;
       case 'invoice': return <InvoiceBuilder onBack={() => setCurrentView('home')} />;
-      case 'shortages': return <InventoryView onBack={() => setCurrentView('home')} allDrugs={allDrugs} shortageDrugIds={['1', '5']} />;
-      case 'analytics': return <StockAnalytics onBack={() => setCurrentView('settings')} allDrugs={allDrugs} />;
-      case 'community': return <CommunityView onBack={() => setCurrentView('home')} onUserClick={navigateToProfile} />;
+      case 'shortages': return <InventoryView onBack={() => setCurrentView('home')} allDrugs={allDrugs} shortageDrugIds={['1', '5']} userId={currentUser?.id ? String(currentUser.id) : 'guest'} />;
+      case 'analytics': return <StockAnalytics onBack={() => setCurrentView('settings')} allDrugs={allDrugs} userId={currentUser?.id ? String(currentUser.id) : 'guest'} />;
+      case 'community': return <CommunityView onBack={() => setCurrentView('home')} onUserClick={navigateToProfile} userId={currentUser?.id ? String(currentUser.id) : 'guest'} />;
       case 'profile': return <UserProfileView user={currentUser || { id: selectedUserId, name: 'صيدلي', isVerified: true, level: 'gold', points: 1250, role: 'pharmacist' }} onBack={() => setCurrentView('community')} />;
       default: 
         // Mock Gamification Data for Header
